@@ -354,10 +354,29 @@ function waitForThreadIdChange(prev, timeout = URL_CHANGE_WAIT_MS) {
   });
 }
 
-// Find the scrollable sidebar container. LinkedIn keeps renaming the class,
-// so we anchor on a thread-link anchor (stable URL pattern) and walk UP to
-// the first ancestor that is actually scrollable — that is the virtualised
-// sidebar list, whatever its current CSS class happens to be.
+// ------------------------------------------------------------------
+// Sidebar detection
+//
+// LinkedIn's messaging sidebar redesign is a moving target — they rename
+// CSS classes, swap <a href="..."> for button-with-onclick, and rewire the
+// scroll container every few months. To avoid getting broken by every
+// reshuffle we use FOUR independent strategies (in priority order):
+//
+//   1. Known CSS classes            — fastest, works on unchanged designs.
+//   2. Thread-URL anchors           — href="*/messaging/thread/*".
+//   3. URN / data-attribute hits    — data-urn="urn:li:messagingConversation:…".
+//   4. Structural fallback          — every <li>/role=listitem that is a
+//                                     direct-ish child of the sidebar
+//                                     scrollable container and contains
+//                                     something clickable.
+//
+// A row detected by ANY strategy is normalised to its nearest container
+// (<li> preferred) and deduped by reference.
+// ------------------------------------------------------------------
+
+// Find the scrollable sidebar container. Tries known classes first, then
+// falls back to "the scrollable ancestor of any rendered conversation row",
+// then finally "the biggest scrollable div in the left half of the viewport".
 function getSidebarScroller() {
   const known = document.querySelector(
     ".msg-conversations-container__conversations-list, " +
@@ -366,16 +385,34 @@ function getSidebarScroller() {
   );
   if (known) return known;
 
-  const anchor = document.querySelector("a[href*='/messaging/thread/']");
-  if (!anchor) return null;
-  let el = anchor.parentElement;
-  while (el && el !== document.body) {
-    const style = window.getComputedStyle(el);
-    const scrollableY = /(auto|scroll)/.test(style.overflowY);
-    if (scrollableY && el.scrollHeight > el.clientHeight + 4) return el;
-    el = el.parentElement;
+  // From any known conversation-row element, walk UP to first scrollable.
+  const seed =
+    document.querySelector("a[href*='/messaging/thread/']") ||
+    document.querySelector("[data-urn*='messagingConversation']") ||
+    document.querySelector("[data-view-name*='conversation-list-item']") ||
+    document.querySelector("li.msg-conversation-listitem");
+  if (seed) {
+    let el = seed.parentElement;
+    while (el && el !== document.body) {
+      const style = window.getComputedStyle(el);
+      if (/(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight + 4) {
+        return el;
+      }
+      el = el.parentElement;
+    }
   }
-  return null;
+
+  // Last resort: biggest scrollable div in the left half of the viewport.
+  const candidates = Array.from(document.querySelectorAll("ul, div, section"))
+    .filter((el) => {
+      const r = el.getBoundingClientRect();
+      if (r.width < 200 || r.height < 300) return false;
+      if (r.left > window.innerWidth * 0.55) return false; // must be on the left
+      const s = window.getComputedStyle(el);
+      return /(auto|scroll)/.test(s.overflowY) && el.scrollHeight > el.clientHeight + 4;
+    })
+    .sort((a, b) => b.scrollHeight - a.scrollHeight);
+  return candidates[0] || null;
 }
 
 // Scroll the conversations sidebar to force lazy-load of older items.
@@ -395,16 +432,19 @@ async function loadAllSidebarItems(maxRounds = LIST_SCROLL_ROUNDS) {
 }
 
 function collectSidebarItems() {
-  // Two strategies, combined and deduped:
-  //   1) Known CSS class hits (fast path when LinkedIn hasn't reshuffled).
-  //   2) Anchor-based discovery: every conversation row contains at least one
-  //      <a href="*/messaging/thread/*">. This survives class-name churn.
-  // Both paths normalise to the nearest clickable container (<li> when
-  // present, otherwise the closest role=listitem / data-view-name wrapper,
-  // otherwise the anchor's parent). We use a Set of container refs to dedupe
-  // so the same row isn't counted twice when multiple selectors match it.
   const set = new Set();
+  const tryAdd = (el, requireAnchor = false) => {
+    const row = rowContainerFor(el);
+    if (!row) return;
+    if (requireAnchor) {
+      // Only accept rows that have SOMETHING clickable — a, button, role=button,
+      // role=link. Otherwise this catches header/separator rows.
+      if (!row.querySelector("a, button, [role='button'], [role='link']")) return;
+    }
+    set.add(row);
+  };
 
+  // --- Strategy 1: known CSS classes (fast path) ------------------
   const classSelectors = [
     "li.msg-conversation-listitem",
     "li.msg-conversations-container__convo-item",
@@ -414,20 +454,37 @@ function collectSidebarItems() {
     "[data-view-name='messaging-conversation-list-item-wrapper']",
   ];
   for (const sel of classSelectors) {
-    document.querySelectorAll(sel).forEach((el) => {
-      const row = rowContainerFor(el);
-      if (row && row.querySelector("a[href*='/messaging/thread/'], a[href*='/thread/']")) {
-        set.add(row);
-      }
-    });
+    document.querySelectorAll(sel).forEach((el) => tryAdd(el, true));
   }
 
-  document
-    .querySelectorAll("a[href*='/messaging/thread/']")
-    .forEach((a) => {
-      const row = rowContainerFor(a);
-      if (row) set.add(row);
-    });
+  // --- Strategy 2: thread-URL anchors -----------------------------
+  document.querySelectorAll("a[href*='/messaging/thread/']").forEach((a) => tryAdd(a));
+
+  // --- Strategy 3: URN / data-attributes --------------------------
+  // LinkedIn puts conversation URNs on various ancestors even when they
+  // remove the href. Examples seen in the wild:
+  //   data-urn="urn:li:messagingConversation:2-xxx"
+  //   data-conversation-urn="urn:li:fs_conversation:..."
+  //   data-view-name="messaging-conversation-list-item"
+  document.querySelectorAll(
+    "[data-urn*='messagingConversation'], " +
+    "[data-urn*='fs_conversation'], " +
+    "[data-conversation-urn], " +
+    "[data-test-app-aware-link*='/messaging/thread/']"
+  ).forEach((el) => tryAdd(el));
+
+  // --- Strategy 4: structural (scroller children) -----------------
+  // Only run if we haven't found anything yet — this is slower and
+  // potentially over-inclusive, but it rescues us when LinkedIn ships a
+  // fresh redesign that breaks every class/URN heuristic above.
+  if (set.size === 0) {
+    const scroller = getSidebarScroller();
+    if (scroller) {
+      scroller
+        .querySelectorAll("li, [role='listitem']")
+        .forEach((el) => tryAdd(el, true));
+    }
+  }
 
   return Array.from(set);
 }
@@ -445,6 +502,26 @@ function rowContainerFor(el) {
     el.closest("[data-view-name*='conversation']") ||
     el
   );
+}
+
+// Wait until the sidebar looks hydrated — either the scroller has non-
+// trivial scrollHeight (items have rendered) or we see some rows via the
+// normal detection. Returns the final item count.
+async function waitForSidebarHydration(timeoutMs = 15000) {
+  const start = Date.now();
+  let items = collectSidebarItems();
+  while (items.length === 0 && Date.now() - start < timeoutMs) {
+    // Nudge the scroller so LinkedIn's virtualiser actually renders rows.
+    const list = getSidebarScroller();
+    if (list) {
+      list.scrollTop = 10;
+      await sleep(60);
+      list.scrollTop = 0;
+    }
+    await sleep(350);
+    items = collectSidebarItems();
+  }
+  return items;
 }
 
 // Extract a sidebar item's target thread URL (preferred click target).
@@ -610,11 +687,15 @@ async function handleSaveLastN(btn, n) {
 
   const list = getSidebarScroller();
   if (list) { list.scrollTop = 0; await sleep(400); }
+  else statusLog(`Couldn't locate the sidebar scroll container — will keep trying…`, "warn");
 
-  // LinkedIn virtualises the sidebar — the top items may be mid-render when
-  // we scroll to top. Wait until collectSidebarItems().length is stable OR
-  // we have at least `n` items for two consecutive polls.
-  let items = collectSidebarItems();
+  // Phase 1: wait for the sidebar to hydrate at all (can take several seconds
+  // on a cold messaging page load).
+  let items = await waitForSidebarHydration(12000);
+
+  // Phase 2: once some rows exist, wait for at least `n` to be present and
+  // the count to be stable across two polls (the virtualiser re-renders a
+  // few times).
   let prev = -1;
   let stable = 0;
   for (let i = 0; i < 15; i++) {
@@ -628,17 +709,23 @@ async function handleSaveLastN(btn, n) {
     prev = items.length;
     await sleep(400);
   }
+
   statusLog(`Found ${items.length} conversation item(s) in the sidebar`, items.length ? "ok" : "warn");
   if (items.length === 0) {
-    // Diagnose: how many thread anchors does the page even have? This tells
-    // us whether LinkedIn changed classes (anchors > 0) or we're on the wrong
-    // page / the sidebar is still loading (anchors == 0).
-    const anchors = document.querySelectorAll("a[href*='/messaging/thread/']").length;
-    statusLog(`Diagnostic: ${anchors} thread link(s) on page.`, "warn");
-    if (anchors === 0) {
-      statusLog(`Open https://www.linkedin.com/messaging/ and wait for the left list to populate, then click Save last ${n} again.`, "warn");
+    // Detailed diagnostic so we can see exactly which strategies failed.
+    const anchors      = document.querySelectorAll("a[href*='/messaging/thread/']").length;
+    const urns         = document.querySelectorAll("[data-urn*='messagingConversation'], [data-urn*='fs_conversation'], [data-conversation-urn]").length;
+    const knownRows    = document.querySelectorAll("li.msg-conversation-listitem, li.msg-conversations-container__convo-item, [data-view-name='messaging-conversation-list-item']").length;
+    const scroller     = getSidebarScroller();
+    const scrollerLis  = scroller ? scroller.querySelectorAll("li").length : 0;
+    const onMessaging  = /\/messaging\//.test(window.location.pathname);
+    statusLog(`Diagnostic · URL on /messaging/: ${onMessaging} · thread anchors: ${anchors} · URN rows: ${urns} · known-class rows: ${knownRows} · scroller found: ${!!scroller} · <li> in scroller: ${scrollerLis}`, "warn");
+    if (!onMessaging) {
+      statusLog(`You're not on https://www.linkedin.com/messaging/ — navigate there first.`, "warn");
+    } else if (anchors === 0 && urns === 0 && scrollerLis === 0) {
+      statusLog(`Sidebar hasn't hydrated yet. Scroll the left list once by hand so LinkedIn renders the items, then click Save last ${n} again.`, "warn");
     } else {
-      statusLog(`Thread links exist but none matched the sidebar row heuristic — LinkedIn DOM may have changed. Please report this.`, "warn");
+      statusLog(`LinkedIn redesigned the sidebar DOM again. Send me this diagnostic so I can add a new selector.`, "warn");
     }
     showToast("No conversations visible in the sidebar", "error");
     return restore();
@@ -654,12 +741,24 @@ async function handleSaveAll(btn) {
   const restore = () => { btn.disabled = false; btn.innerHTML = original; };
   btn.disabled = true;
   btn.innerHTML = `<span class="crm-save-btn__icon">⏳</span><span>Loading list…</span>`;
+  statusClear();
 
+  // Wait for sidebar hydration first (same guard as Save last N).
+  statusLog(`Sync ALL: waiting for the sidebar to hydrate…`, "info");
+  await waitForSidebarHydration(12000);
+
+  statusLog(`Sync ALL: scrolling sidebar to lazy-load every conversation…`, "info");
   const items = await loadAllSidebarItems();
   if (items.length === 0) {
+    const anchors = document.querySelectorAll("a[href*='/messaging/thread/']").length;
+    const urns    = document.querySelectorAll("[data-urn*='messagingConversation'], [data-urn*='fs_conversation'], [data-conversation-urn]").length;
+    const scroller = getSidebarScroller();
+    const scrollerLis = scroller ? scroller.querySelectorAll("li").length : 0;
+    statusLog(`Diagnostic · thread anchors: ${anchors} · URN rows: ${urns} · scroller found: ${!!scroller} · <li> in scroller: ${scrollerLis}`, "warn");
     showToast("No conversations found in the sidebar", "error");
     return restore();
   }
+  statusLog(`Loaded ${items.length} conversation(s) — uploading…`, "ok");
   await walkAndUpload(items, btn, "Sync");
   restore();
 }
