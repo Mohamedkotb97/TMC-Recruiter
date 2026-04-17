@@ -194,6 +194,19 @@ def require_api_key(
     raise HTTPException(status_code=401, detail="Invalid API key or session token")
 
 
+def current_user(
+    x_session_token: str = Header(None, alias="X-Session-Token"),
+    x_api_key: str = Header(None, alias="X-API-Key"),
+    db: Session = Depends(get_db),
+) -> Optional[User]:
+    """Who is the current user?
+    Preference order: session token → per-user API key → None (global bootstrap key)."""
+    u = _session_user(db, x_session_token)
+    if u:
+        return u
+    return _api_key_user(db, x_api_key)
+
+
 def require_user(
     user: Optional[User] = Depends(current_user),
 ) -> User:
@@ -212,19 +225,6 @@ def require_user(
             ),
         )
     return user
-
-
-def current_user(
-    x_session_token: str = Header(None, alias="X-Session-Token"),
-    x_api_key: str = Header(None, alias="X-API-Key"),
-    db: Session = Depends(get_db),
-) -> Optional[User]:
-    """Who is the current user?
-    Preference order: session token → per-user API key → None (global bootstrap key)."""
-    u = _session_user(db, x_session_token)
-    if u:
-        return u
-    return _api_key_user(db, x_api_key)
 
 
 def require_admin(
