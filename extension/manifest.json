@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TMC Recruiter — LinkedIn Capture",
-  "version": "1.3.4",
+  "version": "1.3.5",
   "description": "Save LinkedIn conversations to your personal TMC Recruiter dashboard with one click.",
   "permissions": ["storage", "activeTab", "tabs"],
   "host_permissions": [

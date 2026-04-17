@@ -117,39 +117,72 @@ function extractMessageFromNode(node, defaultSender) {
   return { sender, body, timestamp };
 }
 
-// Find the element that contains the currently-open thread's message list.
-// Tries multiple known classes, then data-view-name, then a structural
-// fallback ("the biggest scrollable element in the right/center pane that
-// contains multiple small text blocks").
-function findThreadContainer() {
-  const known = document.querySelector(
-    ".msg-s-message-list, " +
-    ".msg-s-message-list-container, " +
-    "[data-view-name='messaging-thread-message-list'], " +
-    "[data-view-name='messaging-thread'], " +
-    "[aria-label*='conversation'], " +
-    "[aria-label*='Conversation']"
+// True if the given element contains the conversations SIDEBAR (which must
+// never be confused with the thread pane — both hold <li> lists and can
+// trick generic selectors).
+function containsSidebar(el) {
+  if (!el) return false;
+  return !!el.querySelector(
+    ".msg-conversations-container, " +
+    ".msg-conversations-container__conversations-list, " +
+    "li.msg-conversation-listitem, " +
+    "[data-view-name='messaging-conversation-list'], " +
+    "[data-view-name='messaging-conversation-list-item']"
   );
-  if (known) return known;
+}
 
-  // Structural fallback: scrollable element on the right half of the viewport
-  // containing many <li> children.
+// Find the element that contains the currently-open thread's MESSAGE LIST
+// (NOT the sidebar!). Tries known classes, then data-view-name, then a
+// structural fallback that strictly excludes anything sidebar-shaped.
+function findThreadContainer() {
+  // Known fast paths — message-list specifically. We deliberately do NOT
+  // fall back to the generic ".msg-thread" / "[aria-label*='conversation']"
+  // here because those can resolve to the SIDEBAR on the current LinkedIn
+  // redesign, which contaminates the message list with preview rows.
+  const known = document.querySelector(
+    ".msg-s-message-list-container, " +
+    ".msg-s-message-list, " +
+    "[data-view-name='messaging-thread-message-list'], " +
+    "[data-view-name='messaging-thread']"
+  );
+  if (known && !containsSidebar(known)) return known;
+
+  // aria-labelled, but only if it has real message characteristics
+  // (contains <time datetime> — sidebar rows use relative text only).
+  const aria = Array.from(document.querySelectorAll("[aria-label]")).find((el) => {
+    const lbl = (el.getAttribute("aria-label") || "").toLowerCase();
+    if (!/messag|conversat/.test(lbl)) return false;
+    if (containsSidebar(el)) return false;
+    return !!el.querySelector("time[datetime]");
+  });
+  if (aria) return aria;
+
+  // Structural fallback: a scrollable element that (a) contains at least one
+  // <time datetime> (strong "this is a message list" signal), and (b) does
+  // NOT contain the sidebar. Smallest matching element wins so we don't pick
+  // a page wrapper that happens to contain both panes.
   const candidates = Array.from(document.querySelectorAll("ul, div, section"))
     .filter((el) => {
-      const r = el.getBoundingClientRect();
-      if (r.width < 300 || r.height < 300) return false;
-      if (r.right < window.innerWidth * 0.4) return false; // must be on the right
+      if (containsSidebar(el)) return false;
+      if (!el.querySelector("time[datetime]")) return false;
       const s = window.getComputedStyle(el);
       if (!/(auto|scroll)/.test(s.overflowY)) return false;
-      if (el.querySelectorAll("li").length < 2) return false;
+      const r = el.getBoundingClientRect();
+      if (r.width < 300 || r.height < 200) return false;
       return true;
     })
-    .sort((a, b) => b.scrollHeight - a.scrollHeight);
+    .sort((a, b) => (a.offsetWidth * a.offsetHeight) - (b.offsetWidth * b.offsetHeight));
   return candidates[0] || null;
 }
 
 // Given a thread container, return the list of per-message nodes. Multiple
 // strategies; first one that returns non-empty wins.
+//
+// Importantly: the fallback strategies MUST NOT accidentally match sidebar
+// rows. We don't use a plain "li[role='listitem']" selector because sidebar
+// conversation rows match it too. Instead the last-resort fallback requires
+// a message-like signal per row (a <time> element, or sufficiently long
+// text inside a body-looking child).
 function findMessageNodes(container) {
   const selectors = [
     ".msg-s-event-listitem",
@@ -158,18 +191,31 @@ function findMessageNodes(container) {
     "[data-view-name*='message-item']",
     "[data-urn*='messagingMessage']",
     "[data-event-urn]",
-    "li[role='listitem']",
   ];
   for (const sel of selectors) {
     const nodes = Array.from(container.querySelectorAll(sel));
     if (nodes.length > 0) return { nodes, selector: sel };
   }
-  // Last resort: every direct li child that has non-trivial text.
+
+  // Strict structural fallback — <li> children that EITHER:
+  //   (a) contain a <time> element (real messages have per-message timestamps
+  //       or are inside a message group that does), OR
+  //   (b) are inside a known message-group wrapper
+  // Sidebar preview rows don't satisfy (a) in the thread pane because this
+  // function is already scoped to `container`.
   const direct = Array.from(container.querySelectorAll("li")).filter((li) => {
-    const t = (li.innerText || "").trim();
-    return t.length >= 3;
+    if (li.closest(".msg-conversations-container, [data-view-name*='conversation-list']")) {
+      return false;
+    }
+    if (li.querySelector("time")) return true;
+    if (li.querySelector(".msg-s-message-group__timestamp")) return true;
+    const txt = (li.innerText || "").trim();
+    return txt.length >= 30; // a real message body is rarely shorter than this
   });
-  return { nodes: direct, selector: direct.length ? "li (structural fallback)" : "none" };
+  return {
+    nodes: direct,
+    selector: direct.length ? "li (structural fallback w/ time/body guard)" : "none",
+  };
 }
 
 function extractConversation() {
