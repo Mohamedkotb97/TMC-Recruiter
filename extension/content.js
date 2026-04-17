@@ -533,6 +533,104 @@ function getSidebarItemLink(item) {
   );
 }
 
+// Pick a safe click target inside a sidebar row.
+//
+// LinkedIn's conversation <li> contains TWO click zones with different
+// behaviour:
+//   - The avatar / "presence-entity" image → toggles multi-select mode (the
+//     checkbox overlay for bulk archive/delete). We NEVER want this.
+//   - The name / message-snippet text zone → navigates to the thread.
+//
+// We must deliberately target the text zone. Picking the whole <li> or the
+// outer "selectable" wrapper is unsafe because the event can land on the
+// avatar depending on virtual scroll position and trigger multi-select.
+function pickClickTarget(item) {
+  // 1. Real <a href='.../messaging/thread/...'> if present.
+  const link = getSidebarItemLink(item);
+  if (link) return link;
+
+  // 2. Explicit text-content selectors, in navigation-preference order.
+  const textSelectors = [
+    ".msg-conversation-card__message-snippet",
+    ".msg-conversation-listitem__message-snippet",
+    ".msg-conversation-card__participant-names",
+    ".msg-conversation-listitem__participant-names",
+    ".msg-conversation-card__content-body",
+    ".msg-conversation-card__row-wrapper",
+    ".msg-conversation-listitem__link",
+    "[data-test-app-aware-link]",
+  ];
+  for (const sel of textSelectors) {
+    const el = item.querySelector(sel);
+    if (el) return el;
+  }
+
+  // 3. The "selectable" content container, but skip the presence-entity
+  // (avatar) subtree — clicking its direct non-avatar child is the closest
+  // stand-in for "click the name".
+  const selectable = item.querySelector(".msg-conversation-card__content--selectable");
+  if (selectable) {
+    const children = Array.from(selectable.children).filter(
+      (c) => !c.classList.contains("presence-entity") && !c.querySelector("img, .presence-entity")
+    );
+    if (children.length) return children[0];
+    return selectable;
+  }
+
+  // 4. Heuristic last resort — the largest text-containing descendant that
+  // isn't an image/button.
+  const candidates = Array.from(item.querySelectorAll("span, div, p"))
+    .filter((el) => {
+      if (el.closest("img, button, input, [role='checkbox'], .presence-entity")) return false;
+      const t = (el.textContent || "").trim();
+      return t.length >= 4;
+    });
+  if (candidates.length) return candidates[0];
+
+  return item;
+}
+
+// Detect whether LinkedIn's "batch actions" / multi-select mode is active.
+// In this mode every click toggles a checkbox instead of navigating, which
+// is exactly what broke the walker previously.
+function isInMultiSelectMode() {
+  return !!document.querySelector(
+    ".msg-conversations-container__batch-action-tools-container, " +
+    "[data-view-name='messaging-conversation-list-batch-actions'], " +
+    ".msg-conversation-card--selected, " +
+    ".msg-conversation-listitem--selected, " +
+    "[aria-checked='true'][role='checkbox']"
+  );
+}
+
+async function exitMultiSelectMode() {
+  // Try the in-UI close/cancel control first.
+  const cancel = document.querySelector(
+    ".msg-conversations-container__batch-action-tools-container button[aria-label*='Close' i], " +
+    ".msg-conversations-container__batch-action-tools-container button[aria-label*='Cancel' i], " +
+    "[data-view-name='messaging-conversation-list-batch-actions'] button[aria-label*='Close' i], " +
+    "[data-view-name='messaging-conversation-list-batch-actions'] button[aria-label*='Cancel' i]"
+  );
+  if (cancel) {
+    try { cancel.click(); } catch {}
+    await sleep(250);
+  }
+  // Backup: Escape key — LinkedIn maps this to "exit batch mode" on most pages.
+  try {
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, bubbles: true }));
+    document.dispatchEvent(new KeyboardEvent("keyup",   { key: "Escape", code: "Escape", keyCode: 27, bubbles: true }));
+  } catch {}
+  await sleep(200);
+  // Also un-check any currently-selected rows (defensive — click their avatar
+  // again to toggle selection OFF if mode persists).
+  if (isInMultiSelectMode()) {
+    document.querySelectorAll("[aria-checked='true'][role='checkbox']").forEach((cb) => {
+      try { cb.click(); } catch {}
+    });
+    await sleep(200);
+  }
+}
+
 // ========== Walker — open N items, extract, upload in batches ==========
 
 async function walkAndUpload(items, btn, label) {
@@ -566,25 +664,52 @@ async function walkAndUpload(items, btn, label) {
     try {
       btn.innerHTML = `<span class="crm-save-btn__icon">⏳</span><span>${label} ${i + 1}/${items.length}</span>`;
 
+      // If a previous click accidentally toggled LinkedIn's multi-select
+      // (checkbox) mode, every subsequent click will just toggle checkboxes
+      // instead of navigating. Exit the mode defensively before each item.
+      if (isInMultiSelectMode()) {
+        statusLog(`item ${i+1}: multi-select mode detected — exiting it first`, "warn");
+        await exitMultiSelectMode();
+      }
+
       const prevId = currentThreadId();
       const item = items[i];
       item.scrollIntoView({ block: "center" });
       await sleep(150);
 
-      // Prefer clicking the real <a> so LinkedIn's router navigates us.
-      // Fall back to dispatching a real bubbling MouseEvent (plain .click()
-      // on non-anchor elements sometimes doesn't trigger LinkedIn's SPA
-      // router).
-      const link = getSidebarItemLink(item);
-      const clickTarget = link || item.querySelector("a, [role='link'], button") || item;
-      try {
-        clickTarget.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
-      } catch {
-        clickTarget.click();
-      }
+      // Click the name/snippet zone specifically — NOT the avatar, which
+      // toggles multi-select mode on LinkedIn's messaging sidebar.
+      const clickTarget = pickClickTarget(item);
+      const dispatchClick = (el) => {
+        try {
+          el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, view: window, button: 0 }));
+          el.dispatchEvent(new MouseEvent("mouseup",   { bubbles: true, cancelable: true, view: window, button: 0 }));
+          el.dispatchEvent(new MouseEvent("click",     { bubbles: true, cancelable: true, view: window, button: 0 }));
+        } catch {
+          try { el.click(); } catch {}
+        }
+      };
+      dispatchClick(clickTarget);
 
       // Wait for the thread to switch AND the messages to render.
       await waitForThreadIdChange(prevId);
+
+      // If we still haven't navigated AND we're now in multi-select mode,
+      // the click hit the avatar zone — recover: exit mode, then click the
+      // text-snippet area.
+      if (currentThreadId() === prevId && isInMultiSelectMode()) {
+        statusLog(`item ${i+1}: click landed on avatar (opened multi-select) — recovering`, "warn");
+        await exitMultiSelectMode();
+        await sleep(200);
+        const snippet =
+          item.querySelector(".msg-conversation-card__message-snippet") ||
+          item.querySelector(".msg-conversation-listitem__message-snippet") ||
+          item.querySelector(".msg-conversation-card__participant-names") ||
+          clickTarget;
+        dispatchClick(snippet);
+        await waitForThreadIdChange(prevId);
+      }
+
       await waitForThreadLoaded();
       await loadFullThreadHistory();
 
@@ -594,7 +719,7 @@ async function walkAndUpload(items, btn, label) {
         skipped++; continue;
       }
       if (seenThreadIds.has(threadId)) {
-        statusLog(`item ${i+1}: duplicate threadId ${threadId} — skipped`, "warn");
+        statusLog(`item ${i+1}: duplicate threadId ${threadId} — skipped (likely click didn't navigate)`, "warn");
         skipped++; continue;
       }
       seenThreadIds.add(threadId);
