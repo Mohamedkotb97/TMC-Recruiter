@@ -294,6 +294,7 @@
         <button class="btn btn-ghost btn-sm" id="logoutBtn" title="Log out" style="display:none;">⤴</button>
       </div>
     </header>
+    <div id="impersonationBanner" style="display:none;padding:10px 16px;background:#fff7d6;border-bottom:1px solid #f0d77a;font-size:13px;color:#4a3a00;"></div>
     <div class="view" id="view-root"></div>
   </section>
 </div>
@@ -366,7 +367,32 @@ let STATE = {
   settings: {},
   users: [],
   candidateFilter: { stage: "", q: "", location: "", skill: "", pool_id: "" },
+  // Admin impersonation: when set, boot() asks the backend to scope Inbox /
+  // People / Stats as if we were user viewAsUserId. Persisted in localStorage
+  // so a refresh doesn't silently drop back to the admin's own view.
+  viewAsUserId: Number(localStorage.getItem("tmc_view_as") || 0) || null,
+  viewAsUser: null,
 };
+
+/* Append ?as_user_id=N when an admin is impersonating. Non-admins ignore this. */
+function asUserQS(prefix = "?") {
+  if (ME && ME.is_admin && STATE.viewAsUserId) {
+    return `${prefix}as_user_id=${STATE.viewAsUserId}`;
+  }
+  return "";
+}
+function setViewAs(userId, userObj) {
+  if (userId) {
+    STATE.viewAsUserId = userId;
+    STATE.viewAsUser = userObj || null;
+    localStorage.setItem("tmc_view_as", String(userId));
+  } else {
+    STATE.viewAsUserId = null;
+    STATE.viewAsUser = null;
+    localStorage.removeItem("tmc_view_as");
+  }
+  boot();
+}
 
 /* ============ Auth + API ============ */
 function showSetup() { document.getElementById("setupModal").style.display = "flex"; }
@@ -557,9 +583,24 @@ async function boot() {
       if (navAdmin) navAdmin.style.display = (ME.is_admin ? "flex" : "none");
     }
 
+    // Admins impersonating a teammate: tag stats + candidates with ?as_user_id=X.
+    // We drop the flag silently if the user it points to no longer exists.
+    if (STATE.viewAsUserId && ME && ME.is_admin) {
+      STATE.viewAsUser = (STATE.users || []).find(u => u.id === STATE.viewAsUserId) || null;
+      if (!STATE.viewAsUser) {
+        STATE.viewAsUserId = null;
+        localStorage.removeItem("tmc_view_as");
+      }
+    } else if (!ME || !ME.is_admin) {
+      STATE.viewAsUserId = null;
+      STATE.viewAsUser = null;
+      localStorage.removeItem("tmc_view_as");
+    }
+
+    const q = asUserQS("?");
     const [stats, candidates, roles, templates, pools, settings] = await Promise.all([
-      api("/api/stats"),
-      api("/api/candidates"),
+      api("/api/stats" + q),
+      api("/api/candidates" + q),
       api("/api/roles"),
       api("/api/templates"),
       api("/api/pools"),
@@ -569,6 +610,7 @@ async function boot() {
     STATE.templates = templates; STATE.pools = pools; STATE.settings = settings;
     STATE.replies = []; STATE.tasks = []; STATE.campaigns = [];
     renderNavBadges();
+    renderImpersonationBanner();
     await renderView();
   } catch (e) {
     console.error(e);
@@ -579,6 +621,25 @@ async function boot() {
 function renderNavBadges() {
   const setBadge = (id, n) => { const el = document.getElementById(id); if (!el) return; el.textContent = n; el.style.display = n ? "inline-block" : "none"; };
   setBadge("nav-badge-roles", (STATE.roles || []).filter(r => r.status === "open").length);
+}
+
+function renderImpersonationBanner() {
+  const el = document.getElementById("impersonationBanner");
+  if (!el) return;
+  if (ME && ME.is_admin && STATE.viewAsUserId && STATE.viewAsUser) {
+    const u = STATE.viewAsUser;
+    el.style.display = "block";
+    el.innerHTML = `
+      <strong>Viewing as ${esc(u.display_name || u.username)}</strong>
+      <span style="color:#7a6a1e;">(@${esc(u.username)}) —
+        Inbox, People and Stats are scoped to their data. You are still acting as admin; edits affect real data.</span>
+      <button class="btn btn-ghost btn-sm" id="stopImpersonateBtn" style="margin-left:10px;">Back to admin view</button>
+    `;
+    document.getElementById("stopImpersonateBtn").addEventListener("click", () => setViewAs(null));
+  } else {
+    el.style.display = "none";
+    el.innerHTML = "";
+  }
 }
 
 async function renderView() {
@@ -2231,6 +2292,10 @@ async function renderAdminView(root) {
                 ? '<span class="chip chip-ok">active</span>'
                 : '<span class="chip chip-warn">pending</span>'}</td>
               <td style="white-space:nowrap;">
+                ${u.id !== (ME && ME.id)
+                  ? `<button class="btn btn-navy btn-sm" data-act="viewas" data-id="${u.id}" title="Open Inbox / People / Stats filtered to this user">View inbox</button>`
+                  : ''}
+                <button class="btn btn-ghost btn-sm" data-act="showkey" data-id="${u.id}" title="Reveal this user's Chrome-extension key">Show key</button>
                 ${u.is_active
                   ? `<button class="btn btn-ghost btn-sm" data-act="deactivate" data-id="${u.id}">Suspend</button>`
                   : `<button class="btn btn-gold btn-sm" data-act="activate" data-id="${u.id}">Approve</button>`}
@@ -2258,6 +2323,47 @@ async function renderAdminView(root) {
 
   document.querySelectorAll("[data-act]").forEach(btn => btn.addEventListener("click", async () => {
     const id = btn.dataset.id, act = btn.dataset.act;
+
+    // Enter impersonation mode: switch to Inbox scoped to this user.
+    if (act === "viewas") {
+      const u = users.find(x => x.id === Number(id));
+      if (!u) return toast("User not found", true);
+      setViewAs(Number(id), u);
+      switchView("dashboard");
+      return;
+    }
+
+    // Reveal a user's personal extension key so the admin can share it.
+    if (act === "showkey") {
+      try {
+        const r = await api(`/api/admin/users/${id}/api_key`);
+        showModal(`
+          <h2 style="margin-top:0;">Extension key for ${esc(r.username)}</h2>
+          <p style="font-size:12px;color:var(--mute);">This is the user's personal Chrome-extension key. Paste it into the extension popup under <strong>API key</strong>. The global <code>CRM_API_KEY</code> will NOT work for the extension.</p>
+          <input class="input" readonly value="${esc(r.api_key)}" id="revealKeyInput" style="font-family:monospace;font-size:12px;">
+          <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end;">
+            <button class="btn btn-ghost btn-sm" id="revealCopyBtn">Copy</button>
+            <button class="btn btn-ghost btn-sm" id="revealRotateBtn" style="color:#a33;">Rotate key</button>
+            <button class="btn btn-navy btn-sm" id="revealCloseBtn">Close</button>
+          </div>
+        `);
+        document.getElementById("revealCopyBtn").addEventListener("click", async () => {
+          await navigator.clipboard.writeText(r.api_key);
+          toast("Key copied to clipboard");
+        });
+        document.getElementById("revealCloseBtn").addEventListener("click", hideModal);
+        document.getElementById("revealRotateBtn").addEventListener("click", async () => {
+          if (!confirm("Rotate this user's key? Their extension will stop working until they paste the new one.")) return;
+          try {
+            const nw = await api(`/api/admin/users/${id}/api_key/rotate`, { method: "POST" });
+            document.getElementById("revealKeyInput").value = nw.api_key;
+            toast("Key rotated — send the new one to the user.");
+          } catch (e) { toast("Rotate failed: " + e.message, true); }
+        });
+      } catch (e) { toast("Failed: " + e.message, true); }
+      return;
+    }
+
     const body = {};
     if (act === "activate")   body.is_active = true;
     if (act === "deactivate") body.is_active = false;

@@ -175,13 +175,14 @@ def _extract_json(text: str) -> dict:
 
 def parse_jd(jd_text: str, hiring_notes: str = "") -> dict:
     """Turn a raw job description into structured role requirements."""
+    notes_block = ("HIRING MANAGER NOTES:\n" + hiring_notes) if hiring_notes else ""
     prompt = f"""You are a technical recruiter's assistant. Turn this raw job description into a structured, search-ready role spec.
 
 === JOB DESCRIPTION ===
 {jd_text}
 === END ===
 
-{("HIRING MANAGER NOTES:\\n" + hiring_notes) if hiring_notes else ""}
+{notes_block}
 
 Return a JSON object with EXACTLY these keys:
 - "title": clean role title (string)
@@ -277,9 +278,10 @@ REPLY_LABELS = [
 
 def classify_reply(last_message_body: str, prior_context: str = "") -> dict:
     """Classify a candidate's latest reply and suggest the next action."""
+    context_block = ("PRIOR CONTEXT:\n" + prior_context + "\n\n") if prior_context else ""
     prompt = f"""You are triaging a LinkedIn reply from a candidate to a recruiter's outreach.
 
-{("PRIOR CONTEXT:\\n" + prior_context + "\\n\\n") if prior_context else ""}CANDIDATE'S LATEST REPLY:
+{context_block}CANDIDATE'S LATEST REPLY:
 ---
 {last_message_body}
 ---

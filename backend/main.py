@@ -1173,6 +1173,7 @@ def list_candidates(
     skill: Optional[str] = None,
     pool_id: Optional[int] = None,
     owner_id: Optional[int] = None,
+    as_user_id: Optional[int] = None,
     tag: Optional[str] = None,
     visa: Optional[str] = None,
     min_years: Optional[int] = None,
@@ -1182,17 +1183,26 @@ def list_candidates(
     _: bool = Depends(require_api_key),
 ):
     query = db.query(Candidate)
+    # Admin impersonation: if an admin passes ?as_user_id=N, scope the query to
+    # that user's data exactly as if that user had made the request. Non-admins
+    # trying to pass this param are ignored.
+    scope_user_id: Optional[int] = None
+    if user and getattr(user, "is_admin", False) and as_user_id is not None:
+        scope_user_id = int(as_user_id)
+    elif user and not getattr(user, "is_admin", False):
+        scope_user_id = user.id
+
     # Multi-user scoping: non-admins see candidates they own OR candidates
     # that have at least one conversation they own. (Previously we filtered
     # ONLY on Candidate.owner_user_id, which hid conversations the user just
     # saved whenever the candidate row was first created by someone else —
     # the classic "I saved 5 threads but the Inbox is empty" bug.)
-    if user and not getattr(user, "is_admin", False):
+    if scope_user_id is not None:
         owned_candidate_ids = db.query(Conversation.candidate_id).filter(
-            Conversation.owner_user_id == user.id
+            Conversation.owner_user_id == scope_user_id
         ).distinct().subquery()
         query = query.filter(or_(
-            Candidate.owner_user_id == user.id,
+            Candidate.owner_user_id == scope_user_id,
             Candidate.id.in_(owned_candidate_ids),
         ))
     if stage:
@@ -1292,26 +1302,33 @@ def list_candidates(
 
 @app.get("/api/stats")
 def stats(
+    as_user_id: Optional[int] = None,
     db: Session = Depends(get_db),
     user: Optional[User] = Depends(current_user),
     _: bool = Depends(require_api_key),
 ):
     """Lightweight dashboard KPIs — stage counts + conversation/reply stats.
-    Non-admins only see counts for THEIR own data (multi-user isolation)."""
-    scoped = user and not getattr(user, "is_admin", False)
+    Non-admins only see counts for THEIR own data (multi-user isolation).
+    Admins may pass ?as_user_id=N to view stats as that user."""
+    scope_user_id: Optional[int] = None
+    if user and getattr(user, "is_admin", False) and as_user_id is not None:
+        scope_user_id = int(as_user_id)
+    elif user and not getattr(user, "is_admin", False):
+        scope_user_id = user.id
+
     cand_q = db.query(Candidate)
     conv_q = db.query(Conversation)
-    if scoped:
+    if scope_user_id is not None:
         # Same rule as list_candidates: a candidate is "yours" if you own
         # the row OR you own at least one conversation on it.
         owned_cand_ids = db.query(Conversation.candidate_id).filter(
-            Conversation.owner_user_id == user.id
+            Conversation.owner_user_id == scope_user_id
         ).distinct().subquery()
         cand_q = cand_q.filter(or_(
-            Candidate.owner_user_id == user.id,
+            Candidate.owner_user_id == scope_user_id,
             Candidate.id.in_(owned_cand_ids),
         ))
-        conv_q = conv_q.filter(Conversation.owner_user_id == user.id)
+        conv_q = conv_q.filter(Conversation.owner_user_id == scope_user_id)
     all_cands = cand_q.all()
     stage_counts: dict[str, int] = {}
     for c in all_cands:
@@ -2937,6 +2954,41 @@ def admin_update_user(
         u.password_hash = ai_service.hash_password(payload.reset_password)
     db.commit()
     return _user_dict(u)
+
+
+@app.get("/api/admin/users/{user_id}/api_key")
+def admin_get_user_api_key(
+    user_id: int,
+    db: Session = Depends(get_db),
+    _admin: Optional[User] = Depends(require_admin),
+    __: bool = Depends(require_api_key),
+):
+    """Admin-only. Reveal a teammate's personal extension key so admin can
+    hand it to them securely (or verify their extension is configured right)."""
+    u = db.query(User).filter(User.id == user_id).first()
+    if not u:
+        raise HTTPException(404, "User not found")
+    if not u.api_key:
+        u.api_key = _new_user_api_key()
+        db.commit()
+    return {"user_id": u.id, "username": u.username, "api_key": u.api_key}
+
+
+@app.post("/api/admin/users/{user_id}/api_key/rotate")
+def admin_rotate_user_api_key(
+    user_id: int,
+    db: Session = Depends(get_db),
+    _admin: Optional[User] = Depends(require_admin),
+    __: bool = Depends(require_api_key),
+):
+    """Admin-only. Invalidate a teammate's old key and mint a new one.
+    Their existing extension stops working until they paste the new key."""
+    u = db.query(User).filter(User.id == user_id).first()
+    if not u:
+        raise HTTPException(404, "User not found")
+    u.api_key = _new_user_api_key()
+    db.commit()
+    return {"user_id": u.id, "username": u.username, "api_key": u.api_key}
 
 
 @app.get("/api/admin/stats")
