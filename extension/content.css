@@ -1,0 +1,129 @@
+/* Floating Save Button */
+.crm-save-btn {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: #1a1a2e;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18), 0 2px 4px rgba(0, 0, 0, 0.08);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.crm-save-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22), 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+.crm-save-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+  transform: none;
+}
+.crm-save-btn__icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* Stack: current (32px) / last-N (84px) / sync-all (136px) */
+#crm-save-n-btn.crm-save-btn--secondary {
+  bottom: 84px;
+  background: #0e7490;
+}
+#crm-save-n-btn.crm-save-btn--secondary:hover { background: #155e75; }
+#crm-save-all-btn.crm-save-btn--tertiary {
+  bottom: 136px;
+  background: #c2410c;
+}
+#crm-save-all-btn.crm-save-btn--tertiary:hover { background: #9a3412; }
+
+/* Toast */
+.crm-toast {
+  position: fixed;
+  bottom: 100px;
+  right: 32px;
+  z-index: 100000;
+  padding: 12px 20px;
+  background: #1a1a2e;
+  color: #fff;
+  border-radius: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: none;
+}
+.crm-toast--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.crm-toast--error {
+  background: #b91c1c;
+}
+.crm-toast--success {
+  background: #065f46;
+}
+
+/* Persistent status panel — visible during Save-last-N / Sync-all so the user
+   can see every step (sidebar collect → thread open → extract → upload). */
+#crm-status-panel {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  z-index: 100001;
+  width: 380px;
+  max-height: 55vh;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.35);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11.5px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #334155;
+}
+#crm-status-panel .crm-sp__head {
+  padding: 8px 12px;
+  background: #1e293b;
+  color: #d4af37;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 12px;
+}
+#crm-status-panel .crm-sp__close {
+  cursor: pointer;
+  font-size: 18px;
+  color: #94a3b8;
+  padding: 0 4px;
+  line-height: 1;
+}
+#crm-status-panel .crm-sp__close:hover { color: #fff; }
+#crm-status-panel .crm-sp__body {
+  padding: 8px 12px;
+  overflow-y: auto;
+  line-height: 1.55;
+}
+#crm-status-panel .crm-sp__line { padding: 2px 0; }
+#crm-status-panel .crm-sp__time {
+  color: #64748b;
+  margin-right: 6px;
+}
+#crm-status-panel .crm-sp__line--ok   { color: #86efac; }
+#crm-status-panel .crm-sp__line--warn { color: #fbbf24; }
+#crm-status-panel .crm-sp__line--err  { color: #fca5a5; }
+#crm-status-panel .crm-sp__line--info { color: #cbd5e1; }

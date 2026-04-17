@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "TMC Recruiter — LinkedIn Capture",
+  "version": "1.3.0",
+  "description": "Save LinkedIn conversations to your personal TMC Recruiter dashboard with one click.",
+  "permissions": ["storage", "activeTab", "tabs"],
+  "host_permissions": [
+    "https://www.linkedin.com/*",
+    "http://localhost/*",
+    "http://localhost:*/*",
+    "http://127.0.0.1/*",
+    "http://127.0.0.1:*/*",
+    "https://*.vercel.app/*",
+    "https://*.onrender.com/*",
+    "https://*.up.railway.app/*",
+    "https://*.fly.dev/*",
+    "https://*/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.linkedin.com/messaging/*",
+        "https://www.linkedin.com/in/*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Recruiter CRM"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}

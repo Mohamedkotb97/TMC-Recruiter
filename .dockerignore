@@ -1,0 +1,9 @@
+**/__pycache__
+**/*.pyc
+**/.venv
+backend/.venv
+backend/recruiter.db
+backend/server.log
+backend/server.err.log
+.git
+.DS_Store

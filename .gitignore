@@ -1,0 +1,58 @@
+# ============ Python ============
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+.Python
+
+# ============ Virtual envs ============
+.venv/
+venv/
+env/
+ENV/
+backend/.venv/
+
+# ============ Local database + logs ============
+# Contains real captured LinkedIn data — must never land on GitHub.
+backend/recruiter.db
+backend/recruiter.db-journal
+backend/recruiter.db-wal
+backend/recruiter.db-shm
+*.sqlite
+*.sqlite3
+backend/server.log
+backend/server.err.log
+*.log
+
+# ============ Secrets ============
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+
+# ============ IDE / OS ============
+.vscode/
+.idea/
+.cursor/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ============ Node / extension build artifacts ============
+node_modules/
+dist/
+build/
+*.zip
+
+# ============ Test results / temp ============
+final_test_*.json
+processing_log.txt
+.pytest_cache/
+.coverage
+htmlcov/

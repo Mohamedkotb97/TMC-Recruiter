@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 320px;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #1a1a2e;
+      margin: 0;
+    }
+    h1 {
+      font-size: 15px;
+      margin: 0 0 4px 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .sub { font-size: 11px; color: #888; margin-bottom: 14px; line-height: 1.4; }
+    label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #555;
+      display: block;
+      margin-bottom: 4px;
+      margin-top: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 12px;
+      box-sizing: border-box;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    }
+    input:focus { outline: none; border-color: #1a1a2e; }
+    .row { display: flex; gap: 6px; margin-top: 10px; }
+    button {
+      flex: 1;
+      padding: 9px 10px;
+      background: #1a1a2e;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.ghost {
+      background: #fff;
+      color: #1a1a2e;
+      border: 1px solid #d4af37;
+    }
+    button:disabled { opacity: 0.6; cursor: wait; }
+    .status {
+      margin-top: 12px;
+      font-size: 12px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      min-height: 16px;
+      display: none;
+    }
+    .status.ok  { display:block; background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; }
+    .status.err { display:block; background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
+    .hint {
+      margin-top: 14px;
+      font-size: 11px;
+      color: #666;
+      line-height: 1.5;
+      background: #fef8e8;
+      padding: 10px;
+      border-radius: 6px;
+      border-left: 3px solid #d4af37;
+    }
+    .hint strong { color: #1a1a2e; }
+    code { background: #eee; padding: 1px 4px; border-radius: 3px; font-size: 10px; }
+  </style>
+</head>
+<body>
+  <h1>🎯 TMC Recruiter <span id="versionBadge" style="font-size:10px;font-weight:400;color:#888;margin-left:auto;"></span></h1>
+  <div class="sub">Save LinkedIn conversations to your personal dashboard.</div>
+
+  <label>Backend URL</label>
+  <input type="text" id="backendUrl" placeholder="https://your-recruiter-api.example.com">
+
+  <label>Your personal key <span style="color:#888;font-weight:400;text-transform:none;letter-spacing:0;">(starts with <code>tmc_</code>)</span></label>
+  <input type="text" id="apiKey" placeholder="tmc_...">
+
+  <div class="row">
+    <button id="saveBtn">Save</button>
+    <button id="testBtn" class="ghost">Test connection</button>
+  </div>
+
+  <div class="row">
+    <button id="openDashboardBtn" class="ghost" type="button">Open dashboard → Settings</button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="hint">
+    <strong>How to get your key:</strong><br>
+    1. Click <em>Open dashboard → Settings</em> above (or browse there manually).<br>
+    2. Sign in, then scroll to <strong>🔑 Chrome Extension — your personal key</strong>.<br>
+    3. Click <strong>Copy</strong>, paste above, hit <strong>Save</strong>.<br>
+    4. On <a href="https://www.linkedin.com/messaging/" target="_blank">linkedin.com/messaging</a> use the floating buttons (bottom-right).
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

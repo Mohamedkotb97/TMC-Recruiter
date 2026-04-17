@@ -1,0 +1,2354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TMC · Recruiter Workspace — Habib Touil</title>
+<link rel="icon" href="/tmc_logo.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --tmc-navy: #0a1b3c; --tmc-navy-2: #122a55; --tmc-navy-3: #1a3a6b;
+    --tmc-ink: #0a1226; --tmc-paper: #f5f6fa; --tmc-paper-2: #eaecf3;
+    --tmc-paper-3: #dde1ec; --tmc-gold: #e4b53a; --tmc-gold-soft: #f6e3a6;
+    --tmc-accent: #2563eb; --tmc-accent-soft: #dbeafe; --tmc-white: #ffffff;
+    --mute: #6b7289; --mute-2: #9aa0b4; --line: #d9dde8;
+    --ok: #0f7b3e; --ok-soft: #d1fae5;
+    --warn: #b55a00; --warn-soft: #fef3c7;
+    --bad: #a11d1d; --bad-soft: #fee2e2;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Inter', -apple-system, sans-serif; background: var(--tmc-paper); color: var(--tmc-ink); font-size: 14px; line-height: 1.5; }
+  a { color: var(--tmc-accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  input, textarea, select, button { font-family: inherit; }
+  code { font-family: 'IBM Plex Mono', monospace; font-size: 12px; background: var(--tmc-paper-2); padding: 2px 5px; border-radius: 4px; }
+
+  .app { display: grid; grid-template-columns: 72px minmax(0, 1fr); min-height: 100vh; }
+  @media (max-width: 900px) { .app { grid-template-columns: 56px minmax(0, 1fr); } }
+
+  /* ============ Left nav ============ */
+  .nav { background: var(--tmc-navy); color: var(--tmc-paper); display: flex; flex-direction: column; align-items: center; padding: 12px 0; gap: 2px; border-right: 1px solid var(--tmc-navy-2); position: sticky; top: 0; height: 100vh; overflow-y: auto; overflow-x: hidden; }
+  .nav::-webkit-scrollbar { width: 0; }
+  .nav-logo { width: 44px; height: 44px; border-radius: 8px; object-fit: contain; margin-bottom: 8px; }
+  .nav-item { width: 60px; min-height: 54px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 10px; color: var(--mute-2); cursor: pointer; font-size: 9px; letter-spacing: 0.04em; gap: 3px; position: relative; text-transform: uppercase; font-family: 'IBM Plex Mono', monospace; border: none; background: transparent; padding: 4px 2px; text-align: center; line-height: 1.15; }
+  .nav-item .nav-icon { font-size: 19px; line-height: 1; }
+  .nav-item:hover { color: var(--tmc-white); background: var(--tmc-navy-2); }
+  .nav-item.active { color: var(--tmc-ink); background: var(--tmc-gold); }
+  .nav-item .nav-badge { position: absolute; top: 4px; right: 4px; background: var(--tmc-gold); color: var(--tmc-ink); font-size: 9px; font-weight: 700; border-radius: 8px; padding: 1px 5px; min-width: 16px; text-align: center; }
+  .nav-item.active .nav-badge { background: var(--tmc-ink); color: var(--tmc-gold); }
+  .nav-spacer { flex: 1; min-height: 12px; }
+  @media (max-width: 900px) {
+    .nav-logo { width: 36px; height: 36px; }
+    .nav-item { width: 50px; min-height: 48px; font-size: 8px; }
+    .nav-item .nav-icon { font-size: 17px; }
+    .nav-item span:not(.nav-icon):not(.nav-badge) { display: none; }
+  }
+
+  /* ============ Main region ============ */
+  .main { min-width: 0; display: flex; flex-direction: column; }
+  .topbar { background: var(--tmc-white); border-bottom: 1px solid var(--line); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; gap: 16px; }
+  .topbar h1 { font-size: 17px; font-weight: 700; margin: 0; color: var(--tmc-navy); }
+  .topbar .sub { color: var(--mute); font-size: 11px; font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.05em; margin-top: 2px; }
+  .topbar-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .search-trigger { display: flex; align-items: center; gap: 8px; background: var(--tmc-paper); border: 1px solid var(--line); padding: 6px 11px; border-radius: 8px; color: var(--mute); cursor: pointer; font-size: 12px; }
+  .search-trigger kbd { font-family: 'IBM Plex Mono', monospace; background: var(--tmc-white); border: 1px solid var(--line); padding: 1px 5px; border-radius: 4px; font-size: 10px; }
+  .owner-chip { background: var(--tmc-navy); color: var(--tmc-gold); padding: 4px 9px; border-radius: 999px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.05em; white-space: nowrap; }
+  @media (max-width: 700px) { .topbar { padding: 10px 14px; } .search-trigger span:not(kbd) { display: none; } }
+
+  .view { padding: 20px 28px 48px 28px; max-width: 1400px; margin: 0 auto; width: 100%; }
+  @media (max-width: 900px) { .view { padding: 14px 14px 40px 14px; } }
+
+  /* ============ Buttons ============ */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 13px; background: var(--tmc-white); color: var(--tmc-ink); border: 1px solid var(--line); border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .12s; }
+  .btn:hover { background: var(--tmc-paper-2); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-primary { background: var(--tmc-navy); color: var(--tmc-white); border-color: var(--tmc-navy); }
+  .btn-primary:hover { background: var(--tmc-navy-3); }
+  .btn-gold { background: var(--tmc-gold); color: var(--tmc-ink); border-color: var(--tmc-gold); }
+  .btn-gold:hover { background: var(--tmc-gold-soft); }
+  .btn-ghost { background: transparent; border-color: var(--line); color: var(--tmc-ink); }
+  .btn-ghost:hover { background: var(--tmc-paper-2); }
+  .btn-danger { background: var(--bad-soft); color: var(--bad); border-color: var(--bad-soft); }
+  .btn-sm { padding: 5px 9px; font-size: 12px; }
+
+  /* ============ KPI / Cards ============ */
+  .kpi-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 22px; }
+  .kpi-strip.compact { margin-bottom: 14px; }
+  .kpi-strip.compact .kpi { padding: 10px 12px; }
+  .kpi-strip.compact .kpi-value { font-size: 20px; }
+
+  /* ============ Inbox (home view) ============ */
+  .inbox-wrap { display: grid; grid-template-columns: minmax(0, 2.3fr) minmax(220px, 1fr); gap: 14px; align-items: start; }
+  @media (max-width: 960px) { .inbox-wrap { grid-template-columns: 1fr; } }
+  .inbox-left { background: var(--tmc-white); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .inbox-right { display: flex; flex-direction: column; gap: 14px; }
+  .inbox-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .inbox-toolbar { display: flex; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); align-items: center; flex-wrap: wrap; background: var(--tmc-paper); }
+  .inbox-search { max-width: 340px; flex: 1; min-width: 200px; }
+  .inbox-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+  .inbox-tab { padding: 5px 11px; background: var(--tmc-white); border: 1px solid var(--line); border-radius: 999px; font-size: 11px; cursor: pointer; font-family: 'IBM Plex Mono', monospace; letter-spacing: .04em; color: var(--mute); transition: all .15s; }
+  .inbox-tab:hover { border-color: var(--tmc-navy); color: var(--tmc-navy); }
+  .inbox-tab.active { background: var(--tmc-navy); color: var(--tmc-white); border-color: var(--tmc-navy); }
+  .inbox-list { max-height: 72vh; overflow-y: auto; }
+  .inbox-row { display: flex; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); cursor: pointer; position: relative; transition: background .1s; }
+  .inbox-row:hover { background: var(--tmc-paper); }
+  .inbox-row.unread { background: linear-gradient(90deg, rgba(212,175,55,.06), transparent 60%); }
+  .inbox-row.unread .inbox-name { font-weight: 700; }
+  .inbox-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--tmc-navy); color: var(--tmc-gold); font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: 'IBM Plex Mono', monospace; }
+  .inbox-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .inbox-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .inbox-name { font-weight: 600; font-size: 14px; color: var(--tmc-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .inbox-when { font-size: 11px; color: var(--mute); flex-shrink: 0; font-family: 'IBM Plex Mono', monospace; }
+  .inbox-sub { font-size: 11px; color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .inbox-preview { font-size: 12.5px; color: var(--tmc-ink); line-height: 1.45; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .inbox-tags { display: flex; gap: 5px; margin-top: 4px; flex-wrap: wrap; }
+  .inbox-dot { position: absolute; top: 18px; right: 16px; width: 9px; height: 9px; background: var(--tmc-gold); border-radius: 50%; box-shadow: 0 0 0 3px rgba(212,175,55,.22); }
+  
+  .kpi { background: var(--tmc-white); padding: 13px 15px; border-radius: 10px; border: 1px solid var(--line); }
+  .kpi-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--mute); margin-bottom: 5px; }
+  .kpi-value { font-size: 24px; font-weight: 700; color: var(--tmc-navy); line-height: 1; }
+  .kpi-value .unit { font-size: 13px; color: var(--mute); font-weight: 500; margin-left: 3px; }
+  .kpi-sub { font-size: 11px; color: var(--mute); margin-top: 5px; }
+  .kpi.accent { background: var(--tmc-navy); color: var(--tmc-white); border-color: var(--tmc-navy); }
+  .kpi.accent .kpi-label { color: var(--tmc-gold); }
+  .kpi.accent .kpi-value { color: var(--tmc-white); }
+  .kpi.accent .kpi-sub { color: var(--mute-2); }
+
+  .card { background: var(--tmc-white); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+  .card h2 { font-size: 15px; margin: 0 0 12px 0; color: var(--tmc-navy); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .card h3 { font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: .14em; color: var(--mute); margin: 0 0 10px 0; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--mute); font-weight: 600; padding: 9px 12px; border-bottom: 1px solid var(--line); font-family: 'IBM Plex Mono', monospace; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 13px; vertical-align: top; }
+  tr:hover td { background: var(--tmc-paper); }
+  tr:last-child td { border-bottom: none; }
+
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-family: 'IBM Plex Mono', monospace; letter-spacing: .05em; background: var(--tmc-paper-2); color: var(--tmc-ink); border: 1px solid transparent; }
+  .chip-navy { background: var(--tmc-navy); color: var(--tmc-white); }
+  .chip-gold { background: var(--tmc-gold); color: var(--tmc-ink); font-weight: 600; }
+  .chip-ok { background: var(--ok-soft); color: var(--ok); }
+  .chip-warn { background: var(--warn-soft); color: var(--warn); }
+  .chip-bad { background: var(--bad-soft); color: var(--bad); }
+  .chip-outline { background: transparent; border-color: var(--line); color: var(--mute); }
+
+  .fit-pill { display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 50%; font-weight: 700; font-size: 13px; color: var(--tmc-white); background: var(--mute); flex-shrink: 0; }
+  .fit-90 { background: #166534; } .fit-75 { background: #15803d; } .fit-60 { background: #a16207; } .fit-40 { background: #b45309; } .fit-0 { background: #991b1b; }
+
+  .input, .textarea, select { width: 100%; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--tmc-white); font-size: 13px; color: var(--tmc-ink); outline: none; transition: border-color .15s; }
+  .input:focus, .textarea:focus, select:focus { border-color: var(--tmc-navy); }
+  .textarea { resize: vertical; min-height: 90px; font-family: inherit; line-height: 1.55; }
+  .label { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--mute); margin-bottom: 5px; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 12px; }
+
+  .split { display: grid; grid-template-columns: 380px 1fr; gap: 18px; align-items: flex-start; }
+  .list-panel { background: var(--tmc-white); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; max-height: calc(100vh - 160px); position: sticky; top: 90px; }
+  .list-panel .filters { padding: 10px 12px; border-bottom: 1px solid var(--line); display: flex; gap: 5px; flex-wrap: wrap; }
+  .list-panel .search { padding: 10px 12px; border-bottom: 1px solid var(--line); display: flex; gap: 6px; }
+  .list-panel .search input { flex: 1; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: 13px; }
+  .candidate-list { flex: 1; overflow-y: auto; }
+  .candidate-item { padding: 11px 14px; border-bottom: 1px solid var(--line); cursor: pointer; transition: background .1s; }
+  .candidate-item:hover { background: var(--tmc-paper); }
+  .candidate-item.active { background: var(--tmc-navy); color: var(--tmc-white); }
+  .candidate-item.active .ci-sub { color: var(--tmc-gold-soft); }
+  .candidate-item.active .ci-meta { color: var(--tmc-gold); }
+  .ci-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  .ci-name { font-weight: 600; font-size: 13px; }
+  .ci-src { font-size: 9px; color: var(--mute-2); font-family: 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .06em; }
+  .ci-sub { font-size: 11px; color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 2px 0 3px; }
+  .ci-meta { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: .08em; color: var(--mute); display: flex; gap: 8px; text-transform: uppercase; flex-wrap: wrap; }
+
+  .profile-card { background: linear-gradient(135deg, var(--tmc-navy) 0%, var(--tmc-navy-3) 100%); color: var(--tmc-white); padding: 20px 24px; border-radius: 14px; margin-bottom: 16px; }
+  .profile-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin-bottom: 10px; flex-wrap: wrap; }
+  .profile-name { font-size: 22px; font-weight: 700; margin: 0 0 3px 0; }
+  .profile-name[contenteditable="true"] { outline: 1px dashed rgba(255,255,255,0.3); border-radius: 4px; padding: 0 4px; }
+  .profile-headline { color: var(--tmc-gold-soft); font-size: 13px; margin-bottom: 6px; }
+  .profile-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+  .profile-chips .chip { background: rgba(255,255,255,0.10); color: var(--tmc-paper); border: 1px solid rgba(255,255,255,0.12); }
+  .profile-chips .chip.chip-gold { background: var(--tmc-gold); color: var(--tmc-ink); border: none; }
+  .profile-about { font-size: 12px; color: var(--tmc-paper-3); margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); line-height: 1.5; }
+  .stage-select { padding: 7px 12px; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; background: rgba(255,255,255,0.08); font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--tmc-white); cursor: pointer; min-width: 150px; }
+  .stage-select option { color: var(--tmc-ink); }
+
+  .msg { padding: 9px 12px; margin-bottom: 6px; border-radius: 10px; background: var(--tmc-paper-2); }
+  .msg-recruiter { background: var(--tmc-navy); color: var(--tmc-white); margin-left: 32px; }
+  .msg-candidate { margin-right: 32px; }
+  .msg-sender { font-size: 10px; font-weight: 600; margin-bottom: 3px; opacity: .7; }
+  .msg-body { font-size: 13px; white-space: pre-wrap; }
+
+  .draft-box { background: var(--tmc-navy); color: var(--tmc-paper); border-radius: 12px; padding: 16px; margin-top: 10px; }
+  .draft-box textarea { width: 100%; min-height: 110px; padding: 10px 12px; border-radius: 6px; background: var(--tmc-navy-2); color: var(--tmc-paper); border: 1px solid transparent; font-size: 13px; line-height: 1.55; resize: vertical; outline: none; }
+  .draft-box textarea:focus { border-color: var(--tmc-gold); }
+  .tone-row { display: flex; gap: 5px; margin-bottom: 9px; flex-wrap: wrap; }
+  .tone-row .chip { cursor: pointer; background: transparent; border: 1px solid var(--tmc-navy-3); color: var(--tmc-paper); }
+  .tone-row .chip.active { background: var(--tmc-gold); color: var(--tmc-ink); border-color: var(--tmc-gold); }
+  .draft-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+
+  .kanban { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+  .kanban-col { background: var(--tmc-paper-2); border-radius: 12px; padding: 10px; min-height: 300px; }
+  .kanban-card { position: relative; }
+  .kc-remove { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border-radius: 50%; border: none; background: rgba(0,0,0,0.08); color: var(--mute); font-weight: 700; cursor: pointer; line-height: 1; padding: 0; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .kc-remove:hover { background: var(--bad); color: var(--tmc-white); }
+  .kanban-col.drag-over { background: var(--tmc-gold-soft); }
+  .kanban-col h3 { margin: 0 0 8px 0; font-size: 10px; display: flex; justify-content: space-between; }
+  .kanban-col h3 span.count { background: var(--tmc-navy); color: var(--tmc-white); padding: 1px 7px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+  .kanban-card { background: var(--tmc-white); padding: 9px 11px; border-radius: 8px; margin-bottom: 6px; cursor: grab; border: 1px solid var(--line); box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+  .kanban-card:hover { border-color: var(--tmc-navy); }
+  .kanban-card.dragging { opacity: .4; }
+  .kanban-card .kc-name { font-weight: 600; font-size: 12px; margin-bottom: 2px; }
+  .kanban-card .kc-sub { font-size: 10px; color: var(--mute); }
+
+  .modal-bg { position: fixed; inset: 0; background: rgba(10,18,38,0.6); z-index: 900; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .modal { background: var(--tmc-white); border-radius: 14px; padding: 24px 26px; max-width: 720px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+  .modal img.modal-logo { width: 40px; height: 40px; border-radius: 8px; margin-bottom: 10px; }
+  .modal h2 { margin: 0 0 4px 0; color: var(--tmc-navy); font-size: 20px; }
+  .modal p { color: var(--mute); margin-bottom: 14px; font-size: 13px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--tmc-navy); color: var(--tmc-white); padding: 10px 18px; border-radius: 8px; font-size: 13px; opacity: 0; transition: all .25s; z-index: 1200; box-shadow: 0 8px 24px rgba(0,0,0,.25); max-width: 80%; }
+  .toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.error { background: var(--bad); }
+
+  .empty { padding: 36px; text-align: center; color: var(--mute); font-size: 13px; }
+  .empty img { width: 56px; opacity: .8; margin-bottom: 10px; border-radius: 10px; }
+  .spinner { width: 14px; height: 14px; border: 2px solid var(--mute-2); border-top-color: var(--tmc-navy); border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .badge-risk { background: var(--bad-soft); color: var(--bad); padding: 2px 7px; border-radius: 4px; font-size: 10px; font-family: 'IBM Plex Mono', monospace; margin-right: 4px; display: inline-block; margin-top: 3px; }
+  .badge-evidence { background: var(--ok-soft); color: var(--ok); padding: 2px 7px; border-radius: 4px; font-size: 11px; margin-right: 4px; display: inline-block; margin-top: 3px; }
+
+  .label-interested { background: var(--ok-soft); color: var(--ok); }
+  .label-maybe_later { background: var(--warn-soft); color: var(--warn); }
+  .label-send_jd { background: var(--tmc-accent-soft); color: var(--tmc-accent); }
+  .label-salary_mismatch, .label-location_mismatch, .label-not_interested, .label-no_longer_available { background: var(--bad-soft); color: var(--bad); }
+  .label-needs_more_info { background: var(--warn-soft); color: var(--warn); }
+  .label-refer_someone { background: var(--tmc-accent-soft); color: var(--tmc-accent); }
+  .label-already_in_process, .label-other { background: var(--tmc-paper-2); color: var(--mute); }
+
+  /* ============ Cmd+K palette ============ */
+  .palette-bg { position: fixed; inset: 0; background: rgba(10,18,38,0.55); z-index: 1000; display: none; padding-top: 120px; justify-content: center; }
+  .palette-bg.show { display: flex; }
+  .palette { background: var(--tmc-white); border-radius: 12px; width: 640px; max-width: 94%; max-height: 70vh; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.45); display: flex; flex-direction: column; }
+  .palette input { border: 0; padding: 16px 20px; font-size: 15px; outline: none; border-bottom: 1px solid var(--line); }
+  .palette-results { flex: 1; overflow-y: auto; }
+  .palette-section { padding: 8px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .12em; color: var(--mute); text-transform: uppercase; background: var(--tmc-paper); }
+  .palette-item { padding: 10px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--tmc-paper-2); }
+  .palette-item:hover, .palette-item.hl { background: var(--tmc-navy); color: var(--tmc-white); }
+  .palette-item .pi-sub { font-size: 11px; color: var(--mute-2); }
+  .palette-item:hover .pi-sub, .palette-item.hl .pi-sub { color: var(--tmc-gold-soft); }
+
+  /* Onboarding */
+  .onboard-step { padding: 16px 18px; background: var(--tmc-paper); border-radius: 10px; border: 1px solid var(--line); margin-bottom: 10px; display: flex; gap: 14px; align-items: flex-start; }
+  .onboard-step.done { background: var(--ok-soft); border-color: var(--ok-soft); }
+  .onboard-num { width: 28px; height: 28px; border-radius: 50%; background: var(--tmc-navy); color: var(--tmc-white); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; flex-shrink: 0; }
+  .onboard-step.done .onboard-num { background: var(--ok); }
+
+  /* Inline editable */
+  [contenteditable="true"]:hover { background: var(--tmc-paper-2); border-radius: 4px; }
+  [contenteditable="true"]:focus { outline: 2px solid var(--tmc-navy); background: var(--tmc-white); }
+
+  .pill-tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; background: var(--tmc-accent-soft); color: var(--tmc-accent); font-size: 11px; margin-right: 4px; margin-top: 4px; }
+  .pill-tag .x { cursor: pointer; font-weight: 700; color: var(--tmc-accent); opacity: .6; }
+  .pill-tag .x:hover { opacity: 1; }
+
+  .funnel-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .funnel-row:last-child { border-bottom: none; }
+  .funnel-label { width: 120px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; text-transform: uppercase; color: var(--mute); letter-spacing: .08em; }
+  .funnel-bar { flex: 1; height: 22px; background: var(--tmc-paper-2); border-radius: 6px; overflow: hidden; position: relative; }
+  .funnel-fill { height: 100%; background: linear-gradient(90deg, var(--tmc-navy), var(--tmc-accent)); }
+  .funnel-num { min-width: 80px; text-align: right; font-weight: 700; color: var(--tmc-navy); }
+  .funnel-pct { min-width: 60px; text-align: right; color: var(--mute); font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="nav">
+    <img src="/tmc_logo.jpg" alt="TMC" class="nav-logo" title="TMC · Recruiter Workspace">
+    <button class="nav-item active" data-view="dashboard"><span class="nav-icon">◉</span>Inbox</button>
+    <button class="nav-item" data-view="candidates"><span class="nav-icon">◈</span>People</button>
+    <button class="nav-item" data-view="pools"><span class="nav-icon">❖</span>Pools</button>
+    <button class="nav-item" data-view="roles"><span class="nav-icon">⎔</span>Roles<span class="nav-badge" id="nav-badge-roles" style="display:none;">0</span></button>
+    <button class="nav-item" data-view="templates"><span class="nav-icon">✎</span>Templ.</button>
+    <button class="nav-item" data-view="kanban"><span class="nav-icon">▦</span>Kanban</button>
+    <div class="nav-spacer"></div>
+    <button class="nav-item" id="navAdmin" data-view="admin" title="Admin dashboard" style="display:none;"><span class="nav-icon">⚑</span>Admin</button>
+    <button class="nav-item" data-view="settings" title="Integrations + team"><span class="nav-icon">⚙</span>Settings</button>
+    <button class="nav-item" id="refreshBtn" title="Refresh"><span class="nav-icon">↻</span>Sync</button>
+    <button class="nav-item" id="exportBtn" title="Export Excel"><span class="nav-icon">⬇</span>Excel</button>
+  </aside>
+
+  <section class="main">
+    <header class="topbar">
+      <div>
+        <h1 id="view-title">Dashboard</h1>
+        <div class="sub" id="view-sub">Welcome back.</div>
+      </div>
+      <div class="topbar-right">
+        <button class="search-trigger" id="paletteBtn" title="Global search">🔎 Search <kbd>⌘K</kbd></button>
+        <button class="btn btn-gold btn-sm" id="quickAddBtn">+ Add candidate</button>
+        <span class="owner-chip" id="userChip">★ Habib Touil</span>
+        <button class="btn btn-ghost btn-sm" id="logoutBtn" title="Log out" style="display:none;">⤴</button>
+      </div>
+    </header>
+    <div class="view" id="view-root"></div>
+  </section>
+</div>
+
+<!-- Login / Sign-up screen -->
+<div class="modal-bg" id="setupModal" style="display:none;">
+  <div class="modal" style="max-width: 440px;">
+    <img src="/tmc_logo.jpg" alt="TMC" class="modal-logo">
+    <h2 id="authTitle">Sign in to TMC Recruiter</h2>
+
+    <div id="authTabs" style="display:flex;gap:4px;margin-bottom:14px;">
+      <button class="inbox-tab" id="tabLogin" style="flex:1;padding:8px;font-size:12px;">Sign in</button>
+      <button class="inbox-tab" id="tabRegister" style="flex:1;padding:8px;font-size:12px;">Create account</button>
+    </div>
+
+    <div id="loginPane">
+      <div class="form-grid">
+        <div><label class="label">Username</label><input class="input" id="loginUser" placeholder="your username" autocomplete="username"></div>
+        <div><label class="label">Password</label><input class="input" type="password" id="loginPass" placeholder="" autocomplete="current-password"></div>
+      </div>
+      <div class="modal-actions"><button class="btn btn-primary" id="loginBtn" style="width:100%;">Sign in</button></div>
+      <p style="font-size:11px;color:var(--mute);text-align:center;margin-top:10px;">
+        First time on this server? Default admin is <code>habib</code> / <code>tmc-admin</code> — change the password from Settings.
+      </p>
+    </div>
+
+    <div id="registerPane" style="display:none;">
+      <div class="form-grid">
+        <div><label class="label">Username</label><input class="input" id="regUser" placeholder="jane.doe" autocomplete="username"></div>
+        <div><label class="label">Display name</label><input class="input" id="regName" placeholder="Jane Doe"></div>
+        <div><label class="label">Email</label><input class="input" id="regEmail" placeholder="jane@company.com"></div>
+        <div><label class="label">Password</label><input class="input" type="password" id="regPass" autocomplete="new-password"></div>
+      </div>
+      <div class="modal-actions"><button class="btn btn-primary" id="regBtn" style="width:100%;">Create account</button></div>
+      <p style="font-size:11px;color:var(--mute);text-align:center;margin-top:10px;">
+        Some workspaces require an admin to approve new accounts — you'll see a message if that's the case.
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalBg" style="display:none;"><div class="modal" id="modalBox"></div></div>
+
+<div class="palette-bg" id="paletteBg">
+  <div class="palette">
+    <input id="paletteInput" placeholder="Search candidates, roles, pools, templates...">
+    <div class="palette-results" id="paletteResults"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = "";
+let SESSION_TOKEN = localStorage.getItem("tmc_session") || "";
+let ME = null;
+let STATE = {
+  view: "dashboard",
+  stats: null,
+  candidates: [],
+  currentCandidate: null,
+  roles: [],
+  currentRole: null,
+  templates: [],
+  replies: [],
+  tasks: [],
+  pools: [],
+  campaigns: [],
+  currentCampaign: null,
+  settings: {},
+  users: [],
+  candidateFilter: { stage: "", q: "", location: "", skill: "", pool_id: "" },
+};
+
+/* ============ Auth + API ============ */
+function showSetup() { document.getElementById("setupModal").style.display = "flex"; }
+function hideSetup() { document.getElementById("setupModal").style.display = "none"; }
+
+async function api(path, opts = {}) {
+  const headers = { "Content-Type": "application/json", ...(opts.headers || {}) };
+  if (SESSION_TOKEN) headers["X-Session-Token"] = SESSION_TOKEN;
+  const res = await fetch(API + path, { ...opts, headers });
+  if (res.status === 401) {
+    localStorage.removeItem("tmc_session");
+    SESSION_TOKEN = "";
+    showSetup();
+    throw new Error("Unauthorized");
+  }
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try { const j = await res.json(); if (j.detail) msg = j.detail; } catch {}
+    throw new Error(msg);
+  }
+  if (res.headers.get("content-type")?.includes("application/json")) return res.json();
+  return res;
+}
+
+/* --- Auth tabs --- */
+function showAuthTab(which) {
+  const isLogin = which === "login";
+  document.getElementById("loginPane").style.display = isLogin ? "block" : "none";
+  document.getElementById("registerPane").style.display = isLogin ? "none" : "block";
+  document.getElementById("tabLogin").classList.toggle("active", isLogin);
+  document.getElementById("tabRegister").classList.toggle("active", !isLogin);
+  document.getElementById("authTitle").textContent = isLogin ? "Sign in to TMC Recruiter" : "Create your account";
+}
+document.getElementById("tabLogin").addEventListener("click", () => showAuthTab("login"));
+document.getElementById("tabRegister").addEventListener("click", () => showAuthTab("register"));
+showAuthTab("login");
+
+document.getElementById("loginBtn").addEventListener("click", async () => {
+  const username = document.getElementById("loginUser").value.trim();
+  const password = document.getElementById("loginPass").value;
+  if (!username || !password) return toast("Username + password required", true);
+  try {
+    const res = await fetch(API + "/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return toast(data.detail || "Login failed", true);
+    SESSION_TOKEN = data.token;
+    localStorage.setItem("tmc_session", SESSION_TOKEN);
+    ME = data.user;
+    hideSetup();
+    boot();
+  } catch (e) { toast("Login failed: " + e.message, true); }
+});
+
+document.getElementById("regBtn").addEventListener("click", async () => {
+  const username = document.getElementById("regUser").value.trim();
+  const password = document.getElementById("regPass").value;
+  const display_name = document.getElementById("regName").value.trim();
+  const email = document.getElementById("regEmail").value.trim();
+  if (!username || !password) return toast("Username + password required", true);
+  try {
+    const res = await fetch(API + "/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password, display_name, email }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return toast(data.detail || "Sign-up failed", true);
+    if (data.needs_approval) {
+      toast("Account created — waiting for admin approval.", false);
+      showAuthTab("login");
+    } else {
+      toast("Account created — signing in…");
+      document.getElementById("loginUser").value = username;
+      document.getElementById("loginPass").value = password;
+      document.getElementById("loginBtn").click();
+    }
+  } catch (e) { toast("Sign-up failed: " + e.message, true); }
+});
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  try { await api("/api/auth/logout", { method: "POST" }); } catch {}
+  localStorage.removeItem("tmc_session");
+  SESSION_TOKEN = ""; ME = null;
+  location.reload();
+});
+
+function toast(msg, error = false) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast visible" + (error ? " error" : "");
+  clearTimeout(window._tt);
+  window._tt = setTimeout(() => t.classList.remove("visible"), 2600);
+}
+
+function esc(s) { if (s === null || s === undefined) return ""; return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function fitClass(s) { if (s == null) return ""; if (s >= 90) return "fit-90"; if (s >= 75) return "fit-75"; if (s >= 60) return "fit-60"; if (s >= 40) return "fit-40"; return "fit-0"; }
+function fmtDate(iso) { if (!iso) return ""; return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); }
+function fmtRelative(iso) {
+  if (!iso) return "";
+  const diff = (new Date(iso) - new Date()) / 86400000;
+  if (diff > 1) return `in ${Math.round(diff)}d`;
+  if (diff > 0) return "today";
+  if (diff > -1) return "yesterday";
+  const days = Math.round(-diff);
+  if (days < 7) return `${days}d ago`;
+  if (days < 31) return `${Math.round(days/7)}w ago`;
+  if (days < 365) return `${Math.round(days/30)}mo ago`;
+  return `${Math.round(days/365)}y ago`;
+}
+
+function fmtOverdue(iso) {
+  if (!iso) return "";
+  const diff = (new Date(iso) - new Date()) / 86400000;
+  if (diff > 1) return `in ${Math.round(diff)}d`;
+  if (diff > 0) return "today";
+  if (diff > -1) return "yesterday";
+  return `${Math.round(-diff)}d overdue`;
+}
+
+/* ============ Nav ============ */
+document.querySelectorAll(".nav-item[data-view]").forEach(btn => {
+  btn.addEventListener("click", () => switchView(btn.dataset.view));
+});
+document.getElementById("refreshBtn").addEventListener("click", boot);
+document.getElementById("exportBtn").addEventListener("click", async () => {
+  const headers = {};
+  if (SESSION_TOKEN) headers["X-Session-Token"] = SESSION_TOKEN;
+  const res = await fetch(API + "/api/export/conversations.xlsx", { headers });
+  if (!res.ok) return toast("Export failed", true);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url;
+  a.download = `tmc_export_${new Date().toISOString().slice(0,10)}.xlsx`;
+  a.click(); URL.revokeObjectURL(url);
+  toast("Excel downloaded");
+});
+document.getElementById("quickAddBtn").addEventListener("click", openAddCandidateModal);
+document.getElementById("paletteBtn").addEventListener("click", openPalette);
+
+async function switchView(view) {
+  // Deprecated views — redirect to Inbox (kept to avoid breaking stale onclick handlers)
+  if (view === "replies" || view === "followups" || view === "campaigns") view = "dashboard";
+  STATE.view = view;
+  if (view !== "candidates") STATE.currentCandidate = null;
+  if (view !== "roles") STATE.currentRole = null;
+  if (view !== "campaigns") STATE.currentCampaign = null;
+  document.querySelectorAll(".nav-item[data-view]").forEach(b => b.classList.toggle("active", b.dataset.view === view));
+  const titles = {
+    dashboard: ["Inbox", "All captured conversations. Sync via the Chrome extension."],
+    candidates: ["People", "Search, filter, enrich, and track every candidate."],
+    pools: ["Talent Pools", "Group candidates into reusable pools — by domain, role, seniority."],
+    roles: ["Roles", "Paste a JD. We extract must-haves and outreach angles."],
+    templates: ["Templates", "Reply building blocks — show up as suggestions in conversations."],
+    kanban: ["Pipeline Kanban", "Only people you manually add. Drag between stages."],
+    settings: ["Settings", "Your extension key, integrations, and workspace."],
+    admin: ["Admin", "Manage users, see usage, approve pending signups."],
+  };
+  const [title, sub] = titles[view];
+  document.getElementById("view-title").textContent = title;
+  document.getElementById("view-sub").textContent = sub;
+  await renderView();
+}
+
+function showModal(html, large = false) {
+  document.getElementById("modalBox").innerHTML = html;
+  document.getElementById("modalBg").style.display = "flex";
+}
+function hideModal() {
+  document.getElementById("modalBg").style.display = "none";
+  document.getElementById("modalBox").innerHTML = "";
+}
+document.getElementById("modalBg").addEventListener("click", e => { if (e.target.id === "modalBg") hideModal(); });
+
+/* ============ Boot ============ */
+async function boot() {
+  if (!SESSION_TOKEN) { showSetup(); return; }
+  try {
+    const me = await api("/api/auth/me").catch(() => ({ user: null, all_users: [] }));
+    ME = me.user; STATE.users = me.all_users || [];
+    if (ME) {
+      document.getElementById("userChip").textContent = "★ " + (ME.display_name || ME.username);
+      document.getElementById("logoutBtn").style.display = "inline-flex";
+      const navAdmin = document.getElementById("navAdmin");
+      if (navAdmin) navAdmin.style.display = (ME.is_admin ? "flex" : "none");
+    }
+
+    const [stats, candidates, roles, templates, pools, settings] = await Promise.all([
+      api("/api/stats"),
+      api("/api/candidates"),
+      api("/api/roles"),
+      api("/api/templates"),
+      api("/api/pools"),
+      api("/api/settings"),
+    ]);
+    STATE.stats = stats; STATE.candidates = candidates; STATE.roles = roles;
+    STATE.templates = templates; STATE.pools = pools; STATE.settings = settings;
+    STATE.replies = []; STATE.tasks = []; STATE.campaigns = [];
+    renderNavBadges();
+    await renderView();
+  } catch (e) {
+    console.error(e);
+    toast("Load failed: " + e.message, true);
+  }
+}
+
+function renderNavBadges() {
+  const setBadge = (id, n) => { const el = document.getElementById(id); if (!el) return; el.textContent = n; el.style.display = n ? "inline-block" : "none"; };
+  setBadge("nav-badge-roles", (STATE.roles || []).filter(r => r.status === "open").length);
+}
+
+async function renderView() {
+  const root = document.getElementById("view-root");
+  if (!SESSION_TOKEN) { showSetup(); return; }
+  switch (STATE.view) {
+    case "dashboard":  return renderDashboard(root);
+    case "candidates": return renderCandidatesView(root);
+    case "pools":      return renderPoolsView(root);
+    case "roles":      return renderRolesView(root);
+    case "replies":    return renderRepliesView(root);
+    case "followups":  return renderFollowupsView(root);
+    case "campaigns":  return renderCampaignsView(root);
+    case "templates":  return renderTemplatesView(root);
+    case "kanban":     return renderKanbanView(root);
+    case "settings":   return renderSettingsView(root);
+    case "admin":      return renderAdminView(root);
+  }
+}
+
+/* ============================================================
+   VIEW: Dashboard — INBOX-first (WhatsApp/LinkedIn style)
+   ============================================================ */
+function renderDashboard(root) {
+  const s = STATE.stats || {};
+  const isFirstRun = (s.total_candidates || 0) === 0 && (s.open_roles || 0) === 0;
+
+  if (isFirstRun) {
+    root.innerHTML = renderOnboarding();
+    wireOnboarding();
+    return;
+  }
+
+  // Inbox = candidates with a last_message_at, newest first (already sorted by backend)
+  const all = (STATE.candidates || []).slice();
+  const inbox = all.filter(c => c.last_message_preview || c.conversation_count > 0);
+  const filterMode = STATE.inboxFilter || "all";
+  const q = (STATE.inboxQuery || "").toLowerCase().trim();
+
+  let filtered = inbox;
+  if (filterMode === "unread")   filtered = filtered.filter(c => !c.last_message_from_me);
+  if (filterMode === "sent")     filtered = filtered.filter(c => c.last_message_from_me);
+  if (filterMode === "interested") filtered = filtered.filter(c => (c.last_sentiment || "") === "interested");
+  if (q) filtered = filtered.filter(c =>
+    (c.full_name||"").toLowerCase().includes(q) ||
+    (c.headline||"").toLowerCase().includes(q) ||
+    (c.current_company||"").toLowerCase().includes(q) ||
+    (c.last_message_preview||"").toLowerCase().includes(q)
+  );
+
+  const row = (c) => {
+    const initials = ((c.full_name||"?").split(/\s+/).map(w=>w[0]||"").slice(0,2).join("")).toUpperCase();
+    const when = c.last_message_at ? fmtRelative(c.last_message_at) : "";
+    const prev = c.last_message_preview || "";
+    const isPlaceholder = prev.indexOf("[No message preview yet") === 0;
+    const prefix = (c.last_message_from_me && !isPlaceholder) ? '<span style="color:var(--mute);">You: </span>' : '';
+    const unread = !c.last_message_from_me && !!prev && !isPlaceholder;
+    const sentChip = c.last_sentiment ? `<span class="chip chip-${sentimentChipClass(c.last_sentiment)}" style="font-size:10px;">${esc(c.last_sentiment.replace("_"," "))}</span>` : "";
+    const linkedinHref = (c.profile_url && c.profile_url.indexOf("http") === 0) ? c.profile_url : "";
+    const openLiChip = isPlaceholder && linkedinHref
+      ? `<a href="${esc(linkedinHref)}" target="_blank" rel="noopener" class="chip chip-outline" style="font-size:10px;text-decoration:none;" onclick="event.stopPropagation();">↗ Open on LinkedIn</a>`
+      : "";
+    const previewHtml = isPlaceholder
+      ? `<div class="inbox-preview" style="color:var(--mute);font-style:italic;">No message body yet — open on LinkedIn to read.</div>`
+      : `<div class="inbox-preview">${prefix}${esc(prev || "No messages yet — click to add outreach.")}</div>`;
+    return `
+      <div class="inbox-row ${unread ? 'unread' : ''}" data-id="${c.id}">
+        <div class="inbox-avatar" aria-hidden="true">${esc(initials)}</div>
+        <div class="inbox-body">
+          <div class="inbox-top">
+            <div class="inbox-name">${esc(c.full_name || "Unknown")}</div>
+            <div class="inbox-when">${esc(when)}</div>
+          </div>
+          <div class="inbox-sub">${esc([c.current_title, c.current_company].filter(Boolean).join(" · ") || c.headline || "")}</div>
+          ${previewHtml}
+          <div class="inbox-tags">
+            ${sentChip}
+            ${c.stage ? `<span class="chip chip-outline" style="font-size:10px;">${esc(c.stage)}</span>` : ""}
+            ${(c.source && c.source !== "manual") ? `<span class="chip chip-outline" style="font-size:10px;">${esc(c.source)}</span>` : ""}
+            ${openLiChip}
+          </div>
+        </div>
+        ${unread ? '<span class="inbox-dot" title="You have not replied yet"></span>' : ''}
+      </div>`;
+  };
+
+  root.innerHTML = `
+    <div class="kpi-strip compact">
+      <div class="kpi accent">
+        <div class="kpi-label">People</div>
+        <div class="kpi-value">${s.total_candidates || 0}</div>
+        <div class="kpi-sub">${s.total_conversations || 0} conversations</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Reply rate</div>
+        <div class="kpi-value">${s.reply_rate_pct || 0}<span class="unit">%</span></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Interested</div>
+        <div class="kpi-value" style="color: var(--ok);">${(s.sentiment_counts||{}).interested || 0}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">To triage</div>
+        <div class="kpi-value" style="color: ${s.pending_triage ? 'var(--warn)' : 'var(--ok)'};">${s.pending_triage || 0}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Follow-ups</div>
+        <div class="kpi-value" style="color: ${s.overdue_tasks ? 'var(--bad)' : (s.pending_tasks ? 'var(--warn)' : 'var(--ok)')};">${s.pending_tasks || 0}</div>
+        <div class="kpi-sub">${s.overdue_tasks || 0} overdue</div>
+      </div>
+    </div>
+
+    <div class="inbox-wrap">
+      <div class="inbox-left">
+        <div class="inbox-header">
+          <h2 style="margin:0;">Inbox <span style="color:var(--mute);font-weight:400;font-size:13px;">${filtered.length} of ${inbox.length}</span></h2>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+            <span id="analysisStatusChip" style="font-size:11px;color:var(--mute);"></span>
+            <button class="btn btn-ghost btn-sm" id="rerunPendingBtn" title="Re-run brief + Apify for every conversation still pending">↻ Brief pending</button>
+            <span style="font-size:11px;color:var(--mute);">Sync via Chrome extension →</span>
+            <a class="btn btn-gold btn-sm" href="https://www.linkedin.com/messaging/" target="_blank" title="Open LinkedIn, then click Save current / Save last 5 / Sync ALL from the extension.">Open LinkedIn</a>
+          </div>
+        </div>
+        <div class="inbox-toolbar">
+          <input class="input inbox-search" placeholder="Search name, company, message..." id="inboxSearch" value="${esc(q)}">
+          <div class="inbox-tabs">
+            <button class="inbox-tab ${filterMode==='all'?'active':''}" data-filter="all">All</button>
+            <button class="inbox-tab ${filterMode==='unread'?'active':''}" data-filter="unread">Needs reply</button>
+            <button class="inbox-tab ${filterMode==='sent'?'active':''}" data-filter="sent">Sent</button>
+            <button class="inbox-tab ${filterMode==='interested'?'active':''}" data-filter="interested">Interested</button>
+          </div>
+        </div>
+        <div class="inbox-list">
+          ${filtered.length ? filtered.map(row).join("") : `<div class="empty" style="padding:40px 20px;">No conversations match. Hit <strong>Sync LinkedIn</strong> to pull your latest DMs.</div>`}
+        </div>
+      </div>
+      <div class="inbox-right">
+        <div class="card">
+          <h3 style="margin-top:0;">Quick actions</h3>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <button class="btn btn-ghost" onclick="switchView('candidates')">All people →</button>
+            <button class="btn btn-ghost" onclick="switchView('roles')">Open roles →</button>
+            <button class="btn btn-ghost" onclick="switchView('pools')">Talent pools →</button>
+            <button class="btn btn-ghost" onclick="switchView('templates')">Reply templates →</button>
+            <button class="btn btn-ghost" onclick="switchView('kanban')">Pipeline board →</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0;">Pipeline</h3>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            ${["New","Engaged","Shortlisted","Sent","Replied","Follow-up Needed","Closed"].map(st => `
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--tmc-paper-2);border-radius:6px;cursor:pointer;font-size:13px;" onclick="STATE.candidateFilter.stage='${esc(st)}';switchView('candidates')">
+                <span>${esc(st)}</span>
+                <strong>${(s.stage_counts||{})[st] || 0}</strong>
+              </div>`).join("")}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Wire interactions
+  document.querySelectorAll(".inbox-row").forEach(el => el.addEventListener("click", async () => {
+    const id = parseInt(el.dataset.id);
+    try { STATE.currentCandidate = await api(`/api/candidates/${id}`); } catch (e) { toast("Failed to open: " + e.message, true); return; }
+    switchView("candidates");
+  }));
+  document.querySelectorAll(".inbox-tab").forEach(el => el.addEventListener("click", () => {
+    STATE.inboxFilter = el.dataset.filter; renderDashboard(root);
+  }));
+  const srch = document.getElementById("inboxSearch");
+  if (srch) {
+    let to;
+    srch.addEventListener("input", () => {
+      clearTimeout(to);
+      to = setTimeout(() => { STATE.inboxQuery = srch.value; renderDashboard(root); }, 150);
+    });
+  }
+  const rerunBtn = document.getElementById("rerunPendingBtn");
+  if (rerunBtn) rerunBtn.addEventListener("click", async () => {
+    rerunBtn.disabled = true; const orig = rerunBtn.innerHTML;
+    rerunBtn.innerHTML = "queuing…";
+    try {
+      const r = await api("/api/analysis/rerun_pending?limit=500", { method: "POST" });
+      toast(`Queued ${r.queued || 0} conversations`);
+      pollAnalysisStatus();
+    } catch (e) { toast("Failed: " + e.message, true); }
+    rerunBtn.disabled = false; rerunBtn.innerHTML = orig;
+  });
+  pollAnalysisStatus();
+}
+
+/* ============================================================
+   Analysis-queue status chip
+   ============================================================ */
+let _statusPollTimer = null;
+async function pollAnalysisStatus() {
+  clearTimeout(_statusPollTimer);
+  try {
+    const s = await api("/api/analysis/status");
+    const chip = document.getElementById("analysisStatusChip");
+    if (!chip) return;
+    const busy = (s.analyzing || 0) + (s.pending || 0) + (s.inflight || 0);
+    if (busy > 0) {
+      chip.innerHTML = `<span class="chip chip-warn" style="font-size:10px;">⏳ ${s.analyzing || 0} analyzing · ${s.pending || 0} pending</span>`;
+      _statusPollTimer = setTimeout(pollAnalysisStatus, 4000);
+    } else if (s.failed) {
+      chip.innerHTML = `<span class="chip chip-bad" style="font-size:10px;">${s.failed} failed</span>`;
+    } else {
+      chip.innerHTML = "";
+    }
+  } catch (e) {}
+}
+
+function sentimentChipClass(s) {
+  const map = { interested: "ok", maybe: "warn", not_interested: "bad", no_response: "outline", neutral: "outline" };
+  return map[s] || "outline";
+}
+
+function renderOnboarding() {
+  const checks = {
+    extension: (ME && ME.has_api_key),
+    role: STATE.roles.length > 0,
+    candidate: STATE.candidates.length > 0,
+    pool: STATE.pools.length > 0,
+    apify: STATE.settings?.apify_api_key?.set || STATE.settings?.proxycurl_api_key?.set,
+  };
+  return `
+    <div class="card" style="background: linear-gradient(135deg, var(--tmc-navy), var(--tmc-navy-3)); color: var(--tmc-white); border: none;">
+      <h2 style="color: var(--tmc-gold);">Welcome, ${esc(ME?.display_name || 'Habib')} — let's set up your workspace</h2>
+      <p style="color: var(--tmc-paper-3);">A few quick steps to unlock the full flow. You can skip any of them.</p>
+    </div>
+    <div class="onboard-step ${checks.extension ? 'done' : ''}">
+      <div class="onboard-num">1</div>
+      <div style="flex:1;">
+        <div style="font-weight:600;">Connect the Chrome extension</div>
+        <div style="font-size:12px;color:var(--mute);">Copy your personal key from Settings into the extension popup — then click "Save last 5" or "Save all" on LinkedIn messaging.</div>
+      </div>
+      <button class="btn ${checks.extension ? 'btn-ghost' : 'btn-primary'}" onclick="switchView('settings')">${checks.extension ? '✓ Key ready' : 'Show my key →'}</button>
+    </div>
+    <div class="onboard-step ${checks.role ? 'done' : ''}">
+      <div class="onboard-num">2</div>
+      <div style="flex:1;">
+        <div style="font-weight:600;">Paste your first JD</div>
+        <div style="font-size:12px;color:var(--mute);">Claude will extract must-haves, target companies, search keywords, and write the outreach angle.</div>
+      </div>
+      <button class="btn ${checks.role ? 'btn-ghost' : 'btn-primary'}" onclick="switchView('roles')">${checks.role ? '✓ Done' : 'Create role →'}</button>
+    </div>
+    <div class="onboard-step ${checks.pool ? 'done' : ''}">
+      <div class="onboard-num">3</div>
+      <div style="flex:1;">
+        <div style="font-weight:600;">Create a talent pool</div>
+        <div style="font-size:12px;color:var(--mute);">Group candidates by domain or role. Pools power campaigns.</div>
+      </div>
+      <button class="btn ${checks.pool ? 'btn-ghost' : 'btn-primary'}" onclick="switchView('pools')">${checks.pool ? '✓ Done' : 'Create pool →'}</button>
+    </div>
+    <div class="onboard-step ${checks.apify ? 'done' : ''}">
+      <div class="onboard-num">4</div>
+      <div style="flex:1;">
+        <div style="font-weight:600;">Hook up Apify (optional)</div>
+        <div style="font-size:12px;color:var(--mute);">So saved conversations are auto-enriched with LinkedIn profile data.</div>
+      </div>
+      <button class="btn ${checks.apify ? 'btn-ghost' : 'btn-primary'}" onclick="switchView('settings')">${checks.apify ? '✓ Done' : 'Add key →'}</button>
+    </div>
+  `;
+}
+function wireOnboarding() {}
+
+window.markTaskDone = async function(id) {
+  try {
+    await api(`/api/tasks/${id}`, { method: "PATCH", body: JSON.stringify({ status: "done" }) });
+    toast("Task done");
+    await boot();
+  } catch (e) { toast("Failed: " + e.message, true); }
+};
+window.detectStaleNow = async function() {
+  try {
+    const res = await api("/api/metrics/stale/detect?days=14", { method: "POST" });
+    toast(`Found ${res.stale_candidates} stale · ${res.tasks_created} new tasks`);
+    await boot();
+  } catch (e) { toast("Failed: " + e.message, true); }
+};
+window.testApify = async function() {
+  const out = document.getElementById("apifyTestOut");
+  const url = (document.getElementById("apifyTestUrl") || {}).value || "https://www.linkedin.com/in/williamhgates/";
+  if (!STATE.settings?.apify_api_key?.set) { if (out) out.innerHTML = '<span style="color:var(--bad);">Add an Apify API token first, then click Save.</span>'; return; }
+  if (out) out.innerHTML = '<span class="spinner"></span> Running actor (this may take 30-120s)...';
+  try {
+    const res = await api("/api/candidates/enrich", { method: "POST", body: JSON.stringify({ linkedin_url: url, save: false }) });
+    const p = res.profile || res || {};
+    if (out) out.innerHTML = `<div class="chip chip-ok">OK</div> <strong>${esc(p.full_name||'')}</strong>
+      <div style="color:var(--mute);font-size:11px;margin-top:4px;">${esc(p.headline||'')} · ${esc([p.current_title,p.current_company].filter(Boolean).join(' · '))} · ${esc(p.location||'')}</div>`;
+  } catch (e) { if (out) out.innerHTML = '<span style="color:var(--bad);">Failed: ' + esc(e.message) + '</span>'; }
+};
+
+window.purgeData = async function() {
+  if (!confirm("This will WIPE EVERYTHING (candidates, conversations, roles…). Users and API keys are preserved. Continue?")) return;
+  const again = prompt('Type DELETE to confirm wiping all candidates and conversations:');
+  if (again !== "DELETE") { toast("Cancelled", true); return; }
+  try {
+    const res = await api("/api/admin/purge", { method: "POST", body: JSON.stringify({ confirm: "DELETE" }) });
+    toast(`Done. Remaining: ${res.remaining_candidates} candidates, ${res.remaining_conversations} conversations.`);
+    await boot();
+    switchView("dashboard");
+  } catch (e) { toast("Purge failed: " + e.message, true); }
+};
+
+/* ============================================================
+   VIEW: Candidates (with rich filter + candidate detail)
+   ============================================================ */
+async function renderCandidatesView(root) {
+  const cands = STATE.candidates;
+  const sc = (STATE.stats && STATE.stats.stage_counts) || {};
+  const f = STATE.candidateFilter;
+
+  const filtered = cands.filter(c => {
+    if (f.stage && (c.stage || "New") !== f.stage) return false;
+    if (f.location && !(c.location||"").toLowerCase().includes(f.location.toLowerCase())) return false;
+    if (f.skill && !JSON.stringify(c.skills||[]).toLowerCase().includes(f.skill.toLowerCase())) return false;
+    if (f.pool_id && !(c.pool_ids||[]).includes(parseInt(f.pool_id))) return false;
+    if (f.q) {
+      const q = f.q.toLowerCase();
+      const blob = [c.full_name, c.current_company, c.current_title, c.headline, c.email, ...(c.skills||[])].filter(Boolean).join(" ").toLowerCase();
+      if (!blob.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const stages = ["", "New", "Engaged", "Shortlisted", "Sent", "Replied", "Follow-up Needed", "Closed"];
+
+  root.innerHTML = `
+    <div class="split">
+      <div class="list-panel">
+        <div class="search">
+          <input id="candSearch" placeholder="Name, company, skill, title..." value="${esc(f.q)}">
+          <button class="btn btn-sm btn-gold" onclick="openAddCandidateModal()">+</button>
+        </div>
+        <div class="filters">
+          ${stages.map(s => `<button class="chip ${f.stage === s ? 'chip-navy' : 'chip-outline'}" data-stage="${esc(s)}">${esc(s || 'All')} <span style="opacity:.7;">${s ? (sc[s]||0) : cands.length}</span></button>`).join("")}
+        </div>
+        <div class="filters" style="padding-top:0;">
+          <input class="input" style="flex:1;min-width:100px;font-size:12px;padding:5px 8px;" placeholder="Location" id="filtLoc" value="${esc(f.location)}">
+          <input class="input" style="flex:1;min-width:100px;font-size:12px;padding:5px 8px;" placeholder="Skill" id="filtSkill" value="${esc(f.skill)}">
+          <select class="input" style="flex:1;min-width:100px;font-size:12px;padding:5px 8px;" id="filtPool">
+            <option value="">All pools</option>
+            ${STATE.pools.map(p => `<option value="${p.id}" ${f.pool_id == p.id ? 'selected' : ''}>${esc(p.name)} (${p.count})</option>`).join("")}
+          </select>
+        </div>
+        <div class="candidate-list" id="candListPanel">
+          ${filtered.length ? filtered.map(c => `
+            <div class="candidate-item ${STATE.currentCandidate && STATE.currentCandidate.id === c.id ? 'active' : ''}" data-id="${c.id}">
+              <div class="ci-top">
+                <div class="ci-name">${esc(c.full_name)}</div>
+                <span class="ci-src">${esc(c.source || 'manual')}</span>
+              </div>
+              <div class="ci-sub">${esc([c.current_title, c.current_company].filter(Boolean).join(" · ") || c.headline || '')}</div>
+              <div class="ci-meta"><span>${esc(c.stage || 'New')}</span>${c.location ? `<span>📍 ${esc(c.location)}</span>` : ''}<span>${c.conversation_count} msg</span></div>
+              ${(c.skills||[]).length ? `<div style="margin-top:5px;">${(c.skills||[]).slice(0,3).map(s => `<span class="chip" style="font-size:9px;padding:1px 6px;">${esc(s)}</span>`).join(" ")}</div>` : ''}
+            </div>`).join("") : `<div class="empty">No candidates match.<br><button class="btn btn-sm btn-primary" onclick="openAddCandidateModal()" style="margin-top:10px;">+ Add candidate</button></div>`}
+        </div>
+      </div>
+      <div id="candDetail">${renderCandidateDetail(STATE.currentCandidate)}</div>
+    </div>
+  `;
+
+  document.getElementById("candSearch").addEventListener("input", e => {
+    STATE.candidateFilter.q = e.target.value;
+    clearTimeout(window._cs); window._cs = setTimeout(() => renderCandidatesView(root), 150);
+  });
+  document.getElementById("filtLoc").addEventListener("input", e => {
+    STATE.candidateFilter.location = e.target.value;
+    clearTimeout(window._cs); window._cs = setTimeout(() => renderCandidatesView(root), 200);
+  });
+  document.getElementById("filtSkill").addEventListener("input", e => {
+    STATE.candidateFilter.skill = e.target.value;
+    clearTimeout(window._cs); window._cs = setTimeout(() => renderCandidatesView(root), 200);
+  });
+  document.getElementById("filtPool").addEventListener("change", e => {
+    STATE.candidateFilter.pool_id = e.target.value; renderCandidatesView(root);
+  });
+  document.querySelectorAll(".list-panel .filters .chip[data-stage]").forEach(el => el.addEventListener("click", () => { STATE.candidateFilter.stage = el.dataset.stage; renderCandidatesView(root); }));
+  document.querySelectorAll("#candListPanel .candidate-item").forEach(el => el.addEventListener("click", async () => {
+    const id = parseInt(el.dataset.id);
+    STATE.currentCandidate = await api(`/api/candidates/${id}`);
+    renderCandidatesView(root);
+  }));
+  if (STATE.currentCandidate) wireCandidateDetail(STATE.currentCandidate);
+}
+
+function renderCandidateDetail(c) {
+  if (!c) return `<div class="card empty"><img src="/tmc_logo.jpg"><div>Pick a candidate on the left, or <button class="btn btn-sm btn-primary" onclick="openAddCandidateModal()">+ Add a new one</button></div></div>`;
+  const headline = [c.current_title, c.current_company].filter(Boolean).join(" at ") || c.headline || "";
+  const chips = [];
+  if (c.current_company) chips.push(`<span class="chip chip-gold">${esc(c.current_company)}</span>`);
+  if (c.current_title) chips.push(`<span class="chip">${esc(c.current_title)}</span>`);
+  if (c.location) chips.push(`<span class="chip">📍 ${esc(c.location)}</span>`);
+  if (c.years_experience) chips.push(`<span class="chip">${c.years_experience}y exp</span>`);
+  if (c.visa_status) chips.push(`<span class="chip">🛂 ${esc(c.visa_status)}</span>`);
+  if (c.open_to_relocation) chips.push(`<span class="chip">✈️ relocation ok</span>`);
+  if (c.salary_expectation) chips.push(`<span class="chip">💰 ${esc(c.salary_expectation)}</span>`);
+  if (c.email) chips.push(`<span class="chip">✉️ ${esc(c.email)}</span>`);
+
+  const profileLink = (c.profile_url && c.profile_url.startsWith("http")) ? `<a href="${esc(c.profile_url)}" target="_blank" rel="noopener" style="color:var(--tmc-gold);font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Open LinkedIn profile ↗</a>` : '';
+  const enrichNudge = !c.about && !c.current_company && c.profile_url ? `
+    <div class="card" style="background:var(--warn-soft);border-color:var(--warn-soft);">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div><div style="font-weight:600;color:var(--warn);">Profile info is thin</div>
+        <div style="font-size:12px;">Enrich from LinkedIn, or open the profile manually.</div></div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-gold" onclick="enrichCandidate(${c.id})">✨ Enrich via Apify</button>
+          <a class="btn btn-ghost" href="${esc(c.profile_url)}" target="_blank" rel="noopener">Open LinkedIn ↗</a>
+        </div>
+      </div>
+    </div>` : '';
+
+  return `
+    <div class="profile-card">
+      <div class="profile-top">
+        <div style="min-width:0;flex:1;">
+          <h1 class="profile-name" contenteditable="true" data-field="full_name">${esc(c.full_name)}</h1>
+          <div class="profile-headline">${esc(headline)}</div>
+          <div class="profile-chips">${chips.join("")}</div>
+          ${(c.tags||[]).length || (c.skills||[]).length ? `<div style="margin-top:8px;">
+            ${(c.tags||[]).map(t => `<span class="pill-tag">${esc(t)}</span>`).join("")}
+            ${(c.skills||[]).slice(0,8).map(s => `<span class="chip chip-gold" style="opacity:.85;">${esc(s)}</span>`).join(" ")}
+          </div>` : ''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+          <select class="stage-select" id="stageSelect">
+            ${["New","Engaged","Shortlisted","Sent","Replied","Follow-up Needed","Closed"].map(s => `<option ${s === (c.stage || 'New') ? 'selected' : ''}>${esc(s)}</option>`).join("")}
+          </select>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;">
+            <button class="btn btn-sm btn-gold" id="briefBtn">✨ AI brief</button>
+            <button class="btn btn-sm btn-ghost" id="editCandBtn" style="background:rgba(255,255,255,0.1);color:var(--tmc-paper);border-color:rgba(255,255,255,0.15);">Edit</button>
+            <button class="btn btn-sm btn-ghost" id="pushAtsBtn" style="background:rgba(255,255,255,0.1);color:var(--tmc-paper);border-color:rgba(255,255,255,0.15);">→ ATS</button>
+          </div>
+        </div>
+      </div>
+      ${c.about ? `<div class="profile-about">${esc(c.about)}</div>` : ''}
+      ${profileLink ? `<div style="margin-top:10px;">${profileLink}</div>` : ''}
+    </div>
+    <div id="briefHolder"></div>
+    ${enrichNudge}
+    ${(c.pools||[]).length ? `<div class="card"><h3>Pools</h3>${c.pools.map(p => `<span class="chip chip-navy" style="background:${p.color};margin-right:5px;">${esc(p.name)}</span>`).join(" ")}<button class="btn btn-sm btn-ghost" onclick="openPoolPickerForCand(${c.id})" style="margin-left:8px;">Manage</button></div>` : `<div class="card" style="display:flex;justify-content:space-between;align-items:center;"><span style="color:var(--mute);font-size:12px;">Not in any pool yet.</span><button class="btn btn-sm btn-ghost" onclick="openPoolPickerForCand(${c.id})">+ Add to pool</button></div>`}
+    ${c.matches && c.matches.length ? `
+      <div class="card">
+        <h2>Role fit</h2>
+        ${c.matches.map(m => `
+          <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line);">
+            <div class="fit-pill ${fitClass(m.fit_score)}">${m.fit_score ?? '—'}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:600;">${esc(m.role_title)} ${m.role_company ? `<span style="color:var(--mute);font-weight:400;">· ${esc(m.role_company)}</span>` : ''}</div>
+              <div style="font-size:12px;margin:3px 0;">${esc(m.fit_reason)}</div>
+              ${(m.fit_bullets||[]).map(b => `<span class="badge-evidence">${esc(b)}</span>`).join("")}
+              ${(m.risk_flags||[]).map(r => `<span class="badge-risk">${esc(r)}</span>`).join("")}
+            </div>
+          </div>`).join("")}
+      </div>` : ''}
+    ${c.conversations.length ? c.conversations.map(conv => renderConversationBlock(conv, c)).join("") : `<div class="card"><div class="empty">No captured conversations yet. Save one from LinkedIn, or add manually via <strong>Edit</strong>.</div></div>`}
+    <div class="card">
+      <h3>Private notes</h3>
+      <textarea class="textarea" id="notesArea" placeholder="Your private notes about ${esc(c.full_name)}...">${esc(c.notes || "")}</textarea>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+      ${STATE.roles.length ? `
+        <select id="scoreRoleSelect" class="input" style="max-width:260px;">
+          ${STATE.roles.map(r => `<option value="${r.id}">${esc(r.title)}${r.company ? ' · ' + esc(r.company) : ''}</option>`).join("")}
+        </select>
+        <button class="btn btn-primary" id="scoreCandBtn">Score for this role</button>` : `<div style="font-size:12px;color:var(--mute);">Create a role first to score this candidate against it.</div>`}
+    </div>
+  `;
+}
+
+function renderConversationBlock(conv, c) {
+  const latestDraft = conv.drafts && conv.drafts.length ? conv.drafts[conv.drafts.length - 1] : null;
+  const analyzed = !!conv.analyzed_at;
+  const pickedPoolId = conv.pool_id || conv.suggested_pool_id || "";
+  const pickedRoleId = conv.role_id || conv.suggested_role_id || "";
+  const poolIsSuggestion = !conv.pool_id && conv.suggested_pool_id;
+  const roleIsSuggestion = !conv.role_id && conv.suggested_role_id;
+
+  const poolOptions = `<option value="">(no pool)</option>` +
+    (STATE.pools || []).map(p => `<option value="${p.id}" ${String(p.id) === String(pickedPoolId) ? 'selected' : ''}>${esc(p.name)}</option>`).join("");
+  const roleOptions = `<option value="">(no role)</option>` +
+    (STATE.roles || []).map(r => `<option value="${r.id}" ${String(r.id) === String(pickedRoleId) ? 'selected' : ''}>${esc(r.title)}${r.company ? ' · ' + esc(r.company) : ''}</option>`).join("");
+
+  // Show up to 3 template quick-suggestions
+  const suggestTmpls = (STATE.templates || []).slice(0, 3);
+
+  // Analysis status badge (pending / analyzing / done / failed)
+  const analysisStatus = (conv.analysis_status || (analyzed ? 'done' : 'pending')).toLowerCase();
+  const statusBadge = (() => {
+    if (analysisStatus === 'analyzing') return `<span class="chip chip-warn" style="margin-left:6px;">⏳ analyzing…</span>`;
+    if (analysisStatus === 'pending')   return `<span class="chip chip-outline" style="margin-left:6px;">queued for brief</span>`;
+    if (analysisStatus === 'failed')    return `<span class="chip chip-bad" style="margin-left:6px;" title="${esc(conv.analysis_error||'')}">! analysis failed</span>`;
+    return '';
+  })();
+
+  return `
+    <div class="card" data-conv-id="${conv.id}">
+      <h3 style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span>Conversation · ${fmtDate(conv.captured_at)} · ${conv.message_count} messages ${conv.source ? `<span class="chip chip-outline" style="margin-left:6px;">${esc(conv.source)}</span>` : ''}${statusBadge}</span>
+        <button class="btn btn-sm btn-gold conv-analyze" title="Re-run AI: person brief + conversation brief + pool/role suggestions">${analyzed ? '↻ Re-brief' : '✨ Brief this'}</button>
+      </h3>
+
+      ${conv.summary ? `<div style="padding:10px 12px;background:var(--tmc-paper-2);border-left:3px solid var(--tmc-gold);border-radius:0 8px 8px 0;margin-bottom:10px;">
+        <div style="font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Conversation brief</div>
+        <div style="font-size:13px;">${esc(conv.summary)}</div>
+        ${conv.sentiment ? `<span class="chip chip-navy" style="margin-top:6px;">${esc(conv.sentiment.replace('_',' '))}</span>` : ''}
+      </div>` : ''}
+
+      ${conv.person_brief ? `<div style="padding:10px 12px;background:var(--tmc-paper-2);border-left:3px solid var(--tmc-navy);border-radius:0 8px 8px 0;margin-bottom:10px;">
+        <div style="font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">About the person</div>
+        <div style="font-size:13px;">${esc(conv.person_brief)}</div>
+      </div>` : ''}
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div>
+          <label class="label" style="display:flex;align-items:center;gap:6px;">Pool ${poolIsSuggestion ? '<span class="chip chip-warn" style="font-size:9px;">suggested</span>' : ''}</label>
+          <select class="input conv-pool-sel">${poolOptions}</select>
+        </div>
+        <div>
+          <label class="label" style="display:flex;align-items:center;gap:6px;">Role ${roleIsSuggestion ? '<span class="chip chip-warn" style="font-size:9px;">suggested</span>' : ''}</label>
+          <select class="input conv-role-sel">${roleOptions}</select>
+        </div>
+      </div>
+
+      <div style="margin-bottom:10px;">
+        ${conv.messages.map(m => { const fromRec = (m.from_me !== undefined ? m.from_me : (m.sender || "").toLowerCase() === "you"); const when = m.timestamp ? fmtRelative(m.timestamp) : ""; return `<div class="msg ${fromRec ? 'msg-recruiter' : 'msg-candidate'}"><div class="msg-sender">${esc(m.sender)}${when ? ` <span style="font-weight:400;color:var(--mute);font-size:10px;margin-left:6px;">· ${esc(when)}</span>` : ''}</div><div class="msg-body">${esc(m.body)}</div></div>`; }).join("")}
+      </div>
+      <div class="draft-box">
+        <strong style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--tmc-gold);">Reply</strong>
+        <div class="tone-row" style="margin-top:8px;">
+          <button class="chip active" data-tone="professional">Professional</button>
+          <button class="chip" data-tone="friendly">Friendly</button>
+          <button class="chip" data-tone="brief and direct">Brief</button>
+        </div>
+        ${suggestTmpls.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+          <span style="font-size:10px;color:var(--mute);text-transform:uppercase;letter-spacing:.08em;align-self:center;">Template:</span>
+          ${suggestTmpls.map(t => `<button class="chip chip-outline conv-tmpl-quick" data-tmpl-id="${t.id}" title="Use '${esc(t.name)}' to draft">${esc(t.name)}</button>`).join("")}
+          <button class="chip chip-outline conv-tmpl-more" title="More templates…">More…</button>
+        </div>` : ''}
+        <textarea class="draft-textarea" placeholder="Click 'Generate' for an AI reply, or type your own.">${esc(latestDraft ? latestDraft.draft_text : '')}</textarea>
+        <div class="draft-actions">
+          <button class="btn btn-gold draft-generate">Generate</button>
+          <button class="btn draft-copy">Copy</button>
+          <button class="btn btn-ghost draft-approve" ${latestDraft && latestDraft.approved ? 'disabled' : ''}>${latestDraft && latestDraft.approved ? '✓ Approved' : 'Approve'}</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function wireCandidateDetail(c) {
+  const detail = document.getElementById("candDetail");
+  if (!detail) return;
+
+  detail.querySelector("#stageSelect").addEventListener("change", async e => {
+    await api(`/api/candidates/${c.id}`, { method: "PATCH", body: JSON.stringify({ stage: e.target.value }) });
+    toast("Stage updated"); await boot();
+  });
+
+  // Inline edit on full name
+  const nameEl = detail.querySelector(".profile-name");
+  nameEl.addEventListener("blur", async () => {
+    const newVal = nameEl.textContent.trim();
+    if (!newVal || newVal === c.full_name) return;
+    await api(`/api/candidates/${c.id}`, { method: "PATCH", body: JSON.stringify({ full_name: newVal }) });
+    toast("Name updated");
+  });
+
+  const notesArea = detail.querySelector("#notesArea");
+  if (notesArea) {
+    let t; notesArea.addEventListener("input", e => { clearTimeout(t); t = setTimeout(async () => { await api(`/api/candidates/${c.id}`, { method: "PATCH", body: JSON.stringify({ notes: e.target.value }) }); toast("Notes saved"); }, 800); });
+  }
+
+  const briefBtn = detail.querySelector("#briefBtn");
+  briefBtn.addEventListener("click", async () => {
+    briefBtn.disabled = true; briefBtn.innerHTML = '<span class="spinner"></span> Writing...';
+    try {
+      const b = await api(`/api/candidates/${c.id}/brief`, { method: "POST" });
+      const holder = detail.querySelector("#briefHolder");
+      holder.innerHTML = `
+        <div class="card">
+          <h2>AI Brief for Hiring Manager <button class="btn btn-sm btn-ghost" onclick="navigator.clipboard.writeText(this.parentNode.parentNode.querySelector('.brief-intro').textContent);toast('Copied')">Copy intro</button></h2>
+          <div class="brief-intro" style="font-size:14px;line-height:1.6;padding:12px;background:var(--tmc-paper-2);border-left:3px solid var(--tmc-gold);border-radius:0 8px 8px 0;margin-bottom:12px;">${esc(b.intro || '')}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div><h3>Strengths</h3>${(b.strengths||[]).map(x => `<div style="font-size:12px;margin-bottom:4px;">✓ ${esc(x)}</div>`).join("")}</div>
+            <div><h3>Risks</h3>${(b.risks||[]).map(x => `<div style="font-size:12px;margin-bottom:4px;color:var(--bad);">△ ${esc(x)}</div>`).join("") || '<div style="font-size:12px;color:var(--mute);">None flagged.</div>'}</div>
+          </div>
+          ${(b.missing||[]).length ? `<div style="margin-top:12px;"><h3>Data to collect</h3>${(b.missing||[]).map(x => `<span class="chip chip-warn">?  ${esc(x)}</span>`).join(" ")}</div>` : ''}
+          ${b.next_action ? `<div style="margin-top:12px;padding:10px;background:var(--tmc-navy);color:var(--tmc-paper);border-radius:8px;font-size:13px;"><strong style="color:var(--tmc-gold);">Next:</strong> ${esc(b.next_action)}</div>` : ''}
+        </div>`;
+    } catch (e) { toast("Brief failed: " + e.message, true); }
+    finally { briefBtn.disabled = false; briefBtn.innerHTML = '✨ AI brief'; }
+  });
+
+  detail.querySelector("#editCandBtn").addEventListener("click", () => openEditCandidateModal(c));
+  detail.querySelector("#pushAtsBtn").addEventListener("click", () => openAtsPushModal(c));
+
+  const scoreBtn = detail.querySelector("#scoreCandBtn");
+  if (scoreBtn) scoreBtn.addEventListener("click", async () => {
+    const roleId = parseInt(detail.querySelector("#scoreRoleSelect").value);
+    scoreBtn.disabled = true; scoreBtn.innerHTML = '<span class="spinner"></span> Scoring...';
+    try {
+      await api(`/api/roles/${roleId}/score`, { method: "POST", body: JSON.stringify({ candidate_id: c.id }) });
+      STATE.currentCandidate = await api(`/api/candidates/${c.id}`);
+      toast("Scored");
+      await renderCandidatesView(document.getElementById("view-root"));
+    } catch (e) { toast("Scoring failed: " + e.message, true); }
+    finally { scoreBtn.disabled = false; scoreBtn.textContent = "Score for this role"; }
+  });
+
+  c.conversations.forEach(conv => {
+    const scope = detail.querySelector(`[data-conv-id="${conv.id}"]`);
+    if (!scope) return;
+    const draftScope = scope.querySelector(".draft-box");
+
+    // --- Analyze (re-)run
+    const analyzeBtn = scope.querySelector(".conv-analyze");
+    if (analyzeBtn) analyzeBtn.addEventListener("click", async () => {
+      const original = analyzeBtn.innerHTML;
+      analyzeBtn.disabled = true; analyzeBtn.innerHTML = '<span class="spinner"></span> Analyzing…';
+      try {
+        await api(`/api/conversations/${conv.id}/analyze?force=true`, { method: "POST" });
+        STATE.currentCandidate = await api(`/api/candidates/${c.id}`);
+        await renderCandidatesView(document.getElementById("view-root"));
+        toast("Analyzed");
+      } catch (e) { toast("Analyze failed: " + e.message, true); }
+      finally { analyzeBtn.disabled = false; analyzeBtn.innerHTML = original; }
+    });
+
+    // --- Pool + role selects (recruiter override for this conversation)
+    const poolSel = scope.querySelector(".conv-pool-sel");
+    const roleSel = scope.querySelector(".conv-role-sel");
+    async function patchMeta(body) {
+      try {
+        await api(`/api/conversations/${conv.id}/meta`, { method: "PATCH", body: JSON.stringify(body) });
+        toast("Saved");
+        STATE.currentCandidate = await api(`/api/candidates/${c.id}`);
+      } catch (e) { toast("Save failed: " + e.message, true); }
+    }
+    if (poolSel) poolSel.addEventListener("change", e => {
+      const v = e.target.value;
+      patchMeta(v ? { pool_id: parseInt(v) } : { clear_pool: true });
+    });
+    if (roleSel) roleSel.addEventListener("change", e => {
+      const v = e.target.value;
+      patchMeta(v ? { role_id: parseInt(v) } : { clear_role: true });
+    });
+
+    // --- Tone chips
+    draftScope.querySelectorAll(".tone-row .chip").forEach(chip => chip.addEventListener("click", () => {
+      draftScope.querySelectorAll(".tone-row .chip").forEach(x => x.classList.remove("active"));
+      chip.classList.add("active");
+    }));
+
+    // --- Generate reply (Claude)
+    draftScope.querySelector(".draft-generate").addEventListener("click", async () => {
+      const tone = draftScope.querySelector(".tone-row .chip.active").dataset.tone;
+      const btn = draftScope.querySelector(".draft-generate");
+      const textarea = draftScope.querySelector(".draft-textarea");
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+      try {
+        const res = await api(`/api/conversations/${conv.id}/draft`, { method: "POST", body: JSON.stringify({ tone, goal: "continue the conversation and move toward a call" }) });
+        textarea.value = res.draft_text;
+        textarea.dataset.draftId = res.draft_id;
+        toast("Draft generated");
+      } catch (e) { toast("Draft failed: " + e.message, true); }
+      finally { btn.disabled = false; btn.textContent = "Generate"; }
+    });
+
+    // --- Copy / approve
+    draftScope.querySelector(".draft-copy").addEventListener("click", async () => {
+      const text = draftScope.querySelector(".draft-textarea").value;
+      if (!text) return toast("Nothing to copy", true);
+      await navigator.clipboard.writeText(text);
+      toast("Copied");
+    });
+    draftScope.querySelector(".draft-approve").addEventListener("click", async () => {
+      const draftId = draftScope.querySelector(".draft-textarea").dataset.draftId;
+      if (!draftId) return toast("Generate a draft first", true);
+      await api(`/api/drafts/${draftId}/approve`, { method: "POST", body: JSON.stringify({ approved: true }) });
+      draftScope.querySelector(".draft-approve").textContent = "✓ Approved";
+      draftScope.querySelector(".draft-approve").disabled = true;
+      toast("Approved");
+    });
+
+    // --- Quick template suggestions
+    draftScope.querySelectorAll(".conv-tmpl-quick").forEach(btn => btn.addEventListener("click", async () => {
+      const tid = parseInt(btn.dataset.tmplId);
+      const tone = draftScope.querySelector(".tone-row .chip.active")?.dataset.tone || "professional";
+      btn.classList.add("active");
+      try {
+        const res = await api("/api/templates/draft", { method: "POST", body: JSON.stringify({ template_id: tid, candidate_id: c.id, tone }) });
+        draftScope.querySelector(".draft-textarea").value = res.draft_text;
+        toast("Template applied");
+      } catch (e) { toast("Template failed: " + e.message, true); }
+      finally { btn.classList.remove("active"); }
+    }));
+    const moreBtn = draftScope.querySelector(".conv-tmpl-more");
+    if (moreBtn) moreBtn.addEventListener("click", () => openTemplatePickerForDraft(c, draftScope));
+  });
+}
+
+window.enrichCandidate = async function(id) {
+  if (!(STATE.settings?.apify_api_key?.set || STATE.settings?.proxycurl_api_key?.set)) { toast("Add your Apify key in Settings first", true); switchView("settings"); return; }
+  try {
+    toast("Calling Apify...");
+    await api("/api/candidates/enrich", { method: "POST", body: JSON.stringify({ candidate_id: id }) });
+    STATE.currentCandidate = await api(`/api/candidates/${id}`);
+    toast("Enriched");
+    await boot();
+  } catch (e) { toast("Enrich failed: " + e.message, true); }
+};
+
+function openPoolPickerForCand(candId) {
+  const c = STATE.currentCandidate;
+  const current = (c.pools || []).map(p => p.id);
+  showModal(`
+    <h2>Manage pools for ${esc(c.full_name)}</h2>
+    <p>Select the talent pools this candidate belongs to.</p>
+    <div id="poolList" style="display:flex;flex-direction:column;gap:6px;">
+      ${STATE.pools.map(p => `<label style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--tmc-paper);border-radius:6px;cursor:pointer;"><input type="checkbox" value="${p.id}" ${current.includes(p.id) ? 'checked' : ''}><span class="chip chip-navy" style="background:${p.color};">${esc(p.name)}</span><span style="color:var(--mute);font-size:12px;margin-left:auto;">${p.count} members</span></label>`).join("") || '<div class="empty">No pools yet. Create one in the Pools tab.</div>'}
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="hideModal()">Cancel</button>
+      <button class="btn btn-primary" id="savePools">Save</button>
+    </div>
+  `);
+  document.getElementById("savePools").addEventListener("click", async () => {
+    const selected = Array.from(document.querySelectorAll("#poolList input:checked")).map(x => parseInt(x.value));
+    await api(`/api/candidates/${candId}`, { method: "PATCH", body: JSON.stringify({ pool_ids: selected }) });
+    hideModal(); toast("Pools updated");
+    STATE.currentCandidate = await api(`/api/candidates/${candId}`);
+    await boot();
+  });
+}
+
+function openAtsPushModal(c) {
+  showModal(`
+    <h2>Push to ATS</h2>
+    <p>Copy ${esc(c.full_name)} into your ATS of choice. Configure keys in Settings first.</p>
+    <div class="form-grid">
+      <div><label class="label">Provider</label><select class="input" id="atsProv">
+        <option value="greenhouse">Greenhouse</option>
+        <option value="lever">Lever</option>
+      </select></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="hideModal()">Cancel</button>
+      <button class="btn btn-primary" id="atsGo">Push</button>
+    </div>
+  `);
+  document.getElementById("atsGo").addEventListener("click", async () => {
+    const provider = document.getElementById("atsProv").value;
+    const btn = document.getElementById("atsGo");
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+    try {
+      await api("/api/ats/push", { method: "POST", body: JSON.stringify({ candidate_id: c.id, provider }) });
+      hideModal(); toast("Pushed to " + provider);
+      await boot();
+    } catch (e) { toast("Push failed: " + e.message, true); btn.disabled = false; btn.textContent = "Push"; }
+  });
+}
+
+function openTemplatePickerForDraft(c, draftScope) {
+  const tmpls = STATE.templates;
+  showModal(`
+    <h2>Use a template</h2>
+    <p>Claude fills variables (first name, current company, role details) and tightens phrasing.</p>
+    <select id="tmplPick" class="input" style="margin-bottom:10px;">
+      ${tmpls.map(t => `<option value="${t.id}">${esc(t.name)} (${esc(t.template_type)})</option>`).join("")}
+    </select>
+    <label class="label">Tone</label>
+    <select id="tmplTone" class="input" style="margin-bottom:10px;">
+      <option value="professional">Professional</option><option value="friendly">Friendly</option><option value="brief and direct">Brief</option>
+    </select>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="hideModal()">Cancel</button><button class="btn btn-primary" id="tmplDraftGo">Draft</button></div>
+  `);
+  document.getElementById("tmplDraftGo").addEventListener("click", async () => {
+    const tid = parseInt(document.getElementById("tmplPick").value);
+    const tone = document.getElementById("tmplTone").value;
+    const btn = document.getElementById("tmplDraftGo");
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+    try {
+      const res = await api("/api/templates/draft", { method: "POST", body: JSON.stringify({ template_id: tid, candidate_id: c.id, tone }) });
+      draftScope.querySelector(".draft-textarea").value = res.draft_text;
+      hideModal(); toast("Template applied");
+    } catch (e) { toast("Failed: " + e.message, true); btn.disabled = false; btn.textContent = "Draft"; }
+  });
+}
+
+/* ============================================================
+   Add / Edit candidate modals
+   ============================================================ */
+function openAddCandidateModal() {
+  showModal(`
+    <h2>Add a candidate</h2>
+    <p>Three paths: fill the form, paste a LinkedIn URL to enrich via Apify, or import a CSV.</p>
+    <div style="display:flex;gap:6px;margin-bottom:14px;">
+      <button class="chip chip-navy" data-tab="form">Form</button>
+      <button class="chip chip-outline" data-tab="linkedin">LinkedIn URL</button>
+      <button class="chip chip-outline" data-tab="csv">CSV import</button>
+    </div>
+    <div id="addCandBody"></div>
+  `);
+
+  const body = document.getElementById("addCandBody");
+  function renderTab(tab) {
+    document.querySelectorAll("[data-tab]").forEach(el => el.className = el.dataset.tab === tab ? "chip chip-navy" : "chip chip-outline");
+    if (tab === "form") body.innerHTML = `
+      <div class="form-grid">
+        <div><label class="label">Full name *</label><input class="input" id="f_name" placeholder="Jane Doe"></div>
+        <div><label class="label">LinkedIn URL</label><input class="input" id="f_url" placeholder="https://linkedin.com/in/..."></div>
+        <div><label class="label">Email</label><input class="input" id="f_email" placeholder="jane@example.com"></div>
+        <div><label class="label">Phone</label><input class="input" id="f_phone"></div>
+        <div><label class="label">Current title</label><input class="input" id="f_title"></div>
+        <div><label class="label">Current company</label><input class="input" id="f_company"></div>
+        <div><label class="label">Location</label><input class="input" id="f_location"></div>
+        <div><label class="label">Years experience</label><input class="input" type="number" id="f_years"></div>
+        <div><label class="label">Visa status</label><input class="input" id="f_visa"></div>
+        <div><label class="label">Salary expectation</label><input class="input" id="f_salary"></div>
+      </div>
+      <label class="label">Skills (comma-separated)</label>
+      <input class="input" id="f_skills" placeholder="Python, LLMs, AWS" style="margin-bottom:10px;">
+      <label class="label">Languages (comma-separated)</label>
+      <input class="input" id="f_langs" placeholder="English, Arabic" style="margin-bottom:10px;">
+      <label class="label">Tags (comma-separated)</label>
+      <input class="input" id="f_tags" style="margin-bottom:10px;">
+      <label class="label">About</label>
+      <textarea class="textarea" id="f_about"></textarea>
+      <label class="label" style="margin-top:10px;">Paste a conversation (optional) — one line per message like <code>Jane: I'd love to hear more</code></label>
+      <textarea class="textarea" id="f_conv" style="min-height:100px;font-family:'IBM Plex Mono',monospace;font-size:12px;"></textarea>
+      <label style="display:flex;align-items:center;gap:6px;margin-top:10px;"><input type="checkbox" id="f_relo"> Open to relocation</label>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="hideModal()">Cancel</button>
+        <button class="btn btn-primary" id="f_save">Create</button>
+      </div>`;
+    else if (tab === "linkedin") body.innerHTML = `
+      <p style="font-size:13px;">Paste a LinkedIn profile URL and Claude + Apify will build the full candidate record.</p>
+      <input class="input" id="lu_url" placeholder="https://www.linkedin.com/in/..." style="margin-bottom:14px;">
+      ${!(STATE.settings?.apify_api_key?.set || STATE.settings?.proxycurl_api_key?.set) ? `<div class="chip chip-warn" style="margin-bottom:10px;">⚠ Apify key not set — add it in Settings.</div>` : ''}
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="hideModal()">Cancel</button>
+        <button class="btn btn-gold" id="lu_save">✨ Enrich</button>
+      </div>`;
+    else if (tab === "csv") body.innerHTML = `
+      <p style="font-size:13px;">Upload a CSV with columns like <code>full_name, linkedin_url, email, title, company, location, skills, languages, tags, pool</code>. Missing columns are fine.</p>
+      <input type="file" id="csv_file" accept=".csv" class="input" style="margin-bottom:14px;">
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="hideModal()">Cancel</button>
+        <button class="btn btn-primary" id="csv_go">Import</button>
+      </div>`;
+    wireTab(tab);
+  }
+  function wireTab(tab) {
+    if (tab === "form") {
+      document.getElementById("f_save").addEventListener("click", async () => {
+        const name = document.getElementById("f_name").value.trim();
+        if (!name) return toast("Name required", true);
+        const payload = {
+          full_name: name,
+          profile_url: document.getElementById("f_url").value.trim(),
+          email: document.getElementById("f_email").value.trim(),
+          phone: document.getElementById("f_phone").value.trim(),
+          current_title: document.getElementById("f_title").value.trim(),
+          current_company: document.getElementById("f_company").value.trim(),
+          location: document.getElementById("f_location").value.trim(),
+          years_experience: parseInt(document.getElementById("f_years").value) || null,
+          visa_status: document.getElementById("f_visa").value.trim(),
+          salary_expectation: document.getElementById("f_salary").value.trim(),
+          skills: document.getElementById("f_skills").value.split(",").map(s => s.trim()).filter(Boolean),
+          languages: document.getElementById("f_langs").value.split(",").map(s => s.trim()).filter(Boolean),
+          tags: document.getElementById("f_tags").value.split(",").map(s => s.trim()).filter(Boolean),
+          about: document.getElementById("f_about").value,
+          conversation_transcript: document.getElementById("f_conv").value,
+          open_to_relocation: document.getElementById("f_relo").checked,
+          source: "manual",
+        };
+        try {
+          const res = await api("/api/candidates/create", { method: "POST", body: JSON.stringify(payload) });
+          hideModal(); toast("Candidate created");
+          STATE.currentCandidate = await api(`/api/candidates/${res.id}`);
+          STATE.view = "candidates";
+          await boot();
+        } catch (e) { toast("Failed: " + e.message, true); }
+      });
+    } else if (tab === "linkedin") {
+      document.getElementById("lu_save").addEventListener("click", async () => {
+        const url = document.getElementById("lu_url").value.trim();
+        if (!url) return toast("URL required", true);
+        const btn = document.getElementById("lu_save");
+        btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Calling Apify...';
+        try {
+          const res = await api("/api/candidates/enrich", { method: "POST", body: JSON.stringify({ linkedin_url: url }) });
+          hideModal(); toast("Enriched");
+          STATE.currentCandidate = await api(`/api/candidates/${res.id}`);
+          STATE.view = "candidates";
+          await boot();
+        } catch (e) { toast("Failed: " + e.message, true); btn.disabled = false; btn.innerHTML = '✨ Enrich'; }
+      });
+    } else if (tab === "csv") {
+      document.getElementById("csv_go").addEventListener("click", async () => {
+        const file = document.getElementById("csv_file").files[0];
+        if (!file) return toast("Pick a file", true);
+        const btn = document.getElementById("csv_go"); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+        const form = new FormData(); form.append("file", file);
+        const headers = {}; if (SESSION_TOKEN) headers["X-Session-Token"] = SESSION_TOKEN;
+        try {
+          const r = await fetch(API + "/api/candidates/import_csv", { method: "POST", headers, body: form });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.detail || "Failed");
+          hideModal(); toast(`Imported: ${j.created} new · ${j.updated} updated · ${j.failed} failed`);
+          await boot();
+        } catch (e) { toast("Import failed: " + e.message, true); btn.disabled = false; btn.textContent = "Import"; }
+      });
+    }
+  }
+
+  document.querySelectorAll("[data-tab]").forEach(el => el.addEventListener("click", () => renderTab(el.dataset.tab)));
+  renderTab("form");
+}
+
+function openEditCandidateModal(c) {
+  showModal(`
+    <h2>Edit ${esc(c.full_name)}</h2>
+    <div class="form-grid">
+      <div><label class="label">Full name</label><input class="input" id="e_name" value="${esc(c.full_name)}"></div>
+      <div><label class="label">Email</label><input class="input" id="e_email" value="${esc(c.email||'')}"></div>
+      <div><label class="label">Phone</label><input class="input" id="e_phone" value="${esc(c.phone||'')}"></div>
+      <div><label class="label">Current title</label><input class="input" id="e_title" value="${esc(c.current_title||'')}"></div>
+      <div><label class="label">Current company</label><input class="input" id="e_company" value="${esc(c.current_company||'')}"></div>
+      <div><label class="label">Location</label><input class="input" id="e_location" value="${esc(c.location||'')}"></div>
+      <div><label class="label">Years exp.</label><input class="input" type="number" id="e_years" value="${c.years_experience ?? ''}"></div>
+      <div><label class="label">Visa</label><input class="input" id="e_visa" value="${esc(c.visa_status||'')}"></div>
+      <div><label class="label">Salary</label><input class="input" id="e_salary" value="${esc(c.salary_expectation||'')}"></div>
+    </div>
+    <label class="label">Skills</label><input class="input" id="e_skills" value="${esc((c.skills||[]).join(', '))}" style="margin-bottom:10px;">
+    <label class="label">Languages</label><input class="input" id="e_langs" value="${esc((c.languages||[]).join(', '))}" style="margin-bottom:10px;">
+    <label class="label">Tags</label><input class="input" id="e_tags" value="${esc((c.tags||[]).join(', '))}" style="margin-bottom:10px;">
+    <label class="label">About</label><textarea class="textarea" id="e_about">${esc(c.about||'')}</textarea>
+    <label style="display:flex;align-items:center;gap:6px;margin-top:10px;"><input type="checkbox" id="e_relo" ${c.open_to_relocation ? 'checked' : ''}> Open to relocation</label>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="hideModal()">Cancel</button>
+      <button class="btn btn-primary" id="e_save">Save</button>
+    </div>
+  `);
+  document.getElementById("e_save").addEventListener("click", async () => {
+    const payload = {
+      full_name: document.getElementById("e_name").value.trim(),
+      email: document.getElementById("e_email").value.trim(),
+      phone: document.getElementById("e_phone").value.trim(),
+      current_title: document.getElementById("e_title").value.trim(),
+      current_company: document.getElementById("e_company").value.trim(),
+      location: document.getElementById("e_location").value.trim(),
+      years_experience: parseInt(document.getElementById("e_years").value) || null,
+      visa_status: document.getElementById("e_visa").value.trim(),
+      salary_expectation: document.getElementById("e_salary").value.trim(),
+      skills: document.getElementById("e_skills").value.split(",").map(s => s.trim()).filter(Boolean),
+      languages: document.getElementById("e_langs").value.split(",").map(s => s.trim()).filter(Boolean),
+      tags: document.getElementById("e_tags").value.split(",").map(s => s.trim()).filter(Boolean),
+      about: document.getElementById("e_about").value,
+      open_to_relocation: document.getElementById("e_relo").checked,
+    };
+    try {
+      await api(`/api/candidates/${c.id}`, { method: "PATCH", body: JSON.stringify(payload) });
+      hideModal(); toast("Updated");
+      STATE.currentCandidate = await api(`/api/candidates/${c.id}`);
+      await boot();
+    } catch (e) { toast("Failed: " + e.message, true); }
+  });
+}
+
+/* ============================================================
+   VIEW: Pools
+   ============================================================ */
+async function renderPoolsView(root) {
+  root.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;">${STATE.pools.length} pool${STATE.pools.length !== 1 ? 's' : ''}</h3>
+      <button class="btn btn-primary" id="newPoolBtn">+ New pool</button>
+    </div>
+    ${STATE.pools.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
+      ${STATE.pools.map(p => `
+        <div class="card" style="margin:0;border-top:4px solid ${esc(p.color)};">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
+            <strong>${esc(p.name)}</strong>
+            <span class="chip chip-navy">${p.count}</span>
+          </div>
+          ${p.description ? `<div style="font-size:12px;color:var(--mute);margin-bottom:10px;">${esc(p.description)}</div>` : ''}
+          <div style="display:flex;gap:5px;flex-wrap:wrap;">
+            <button class="btn btn-sm btn-ghost" data-pool-open="${p.id}">Open</button>
+            <button class="btn btn-sm btn-ghost" data-pool-edit="${p.id}">Edit</button>
+            <button class="btn btn-sm btn-danger" data-pool-del="${p.id}">Del</button>
+            ${STATE.templates.length ? `<button class="btn btn-sm btn-gold" data-pool-camp="${p.id}">→ Campaign</button>` : ''}
+          </div>
+        </div>`).join("")}
+    </div>` : `<div class="card empty"><img src="/tmc_logo.jpg"><div>No pools yet. Pools let you group candidates by domain / skill / geography and then run a bulk outreach campaign against them.</div></div>`}
+  `;
+  document.getElementById("newPoolBtn").addEventListener("click", () => openPoolEditor(null));
+  document.querySelectorAll("[data-pool-open]").forEach(btn => btn.addEventListener("click", () => { STATE.candidateFilter.pool_id = btn.dataset.poolOpen; switchView("candidates"); }));
+  document.querySelectorAll("[data-pool-edit]").forEach(btn => btn.addEventListener("click", () => openPoolEditor(STATE.pools.find(p => p.id == btn.dataset.poolEdit))));
+  document.querySelectorAll("[data-pool-del]").forEach(btn => btn.addEventListener("click", async () => { if (!confirm("Delete this pool? Candidates are not deleted.")) return; await api(`/api/pools/${btn.dataset.poolDel}`, { method: "DELETE" }); toast("Deleted"); await boot(); }));
+  document.querySelectorAll("[data-pool-camp]").forEach(btn => btn.addEventListener("click", () => openCampaignCreator(parseInt(btn.dataset.poolCamp))));
+}
+function openPoolEditor(p) {
+  const edit = !!p;
+  showModal(`
+    <h2>${edit ? 'Edit pool' : 'New talent pool'}</h2>
+    <div class="form-grid">
+      <div><label class="label">Name</label><input class="input" id="p_name" value="${esc(p?.name || '')}" placeholder="Senior MLEs in MENA"></div>
+      <div><label class="label">Color</label><input class="input" type="color" id="p_color" value="${esc(p?.color || '#2563eb')}"></div>
+    </div>
+    <label class="label">Description</label><textarea class="textarea" id="p_desc">${esc(p?.description || '')}</textarea>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="hideModal()">Cancel</button><button class="btn btn-primary" id="p_save">${edit ? 'Save' : 'Create'}</button></div>
+  `);
+  document.getElementById("p_save").addEventListener("click", async () => {
+    const body = { name: document.getElementById("p_name").value.trim(), description: document.getElementById("p_desc").value, color: document.getElementById("p_color").value };
+    if (!body.name) return toast("Name required", true);
+    try {
+      if (edit) await api(`/api/pools/${p.id}`, { method: "PATCH", body: JSON.stringify(body) });
+      else await api("/api/pools", { method: "POST", body: JSON.stringify(body) });
+      hideModal(); toast("Saved"); await boot();
+    } catch (e) { toast("Failed: " + e.message, true); }
+  });
+}
+
+/* ============================================================
+   VIEW: Roles  (unchanged from v2, with funnel + role's pool)
+   ============================================================ */
+async function renderRolesView(root) {
+  if (STATE.currentRole) return renderRoleDetail(root, STATE.currentRole);
+  root.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;">${STATE.roles.length} role${STATE.roles.length !== 1 ? 's' : ''}</h3>
+      <button class="btn btn-primary" id="newRoleBtn">+ New role (paste JD)</button>
+    </div>
+    ${STATE.roles.length ? `<div class="card" style="padding:0;overflow:hidden;"><table>
+      <thead><tr><th>Title</th><th>Company</th><th>Location</th><th>Matches</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        ${STATE.roles.map(r => `<tr class="role-row" data-id="${r.id}" style="cursor:pointer;">
+          <td><strong>${esc(r.title)}</strong></td><td>${esc(r.company)}</td><td>${esc(r.location)}</td>
+          <td>${r.match_count}</td><td><span class="chip ${r.status === 'open' ? 'chip-ok' : 'chip-outline'}">${esc(r.status)}</span></td>
+          <td><span style="color:var(--mute);">Open →</span></td>
+        </tr>`).join("")}
+      </tbody></table></div>` : `<div class="card empty"><img src="/tmc_logo.jpg"><div>No roles yet. Paste a JD and Claude builds the spec + templates.</div></div>`}
+  `;
+  document.getElementById("newRoleBtn").addEventListener("click", openNewRoleModal);
+  document.querySelectorAll(".role-row").forEach(tr => tr.addEventListener("click", async () => { STATE.currentRole = await api(`/api/roles/${tr.dataset.id}`); renderRolesView(root); }));
+}
+function openNewRoleModal() {
+  showModal(`
+    <h2>New role</h2>
+    <p>Paste the full JD. Claude extracts must-have skills, ideal titles, target companies, persona, and a pitch angle.</p>
+    <div class="form-grid">
+      <div><label class="label">Title (optional)</label><input class="input" id="nr_title" placeholder="Senior ML Engineer"></div>
+      <div><label class="label">Company</label><input class="input" id="nr_company"></div>
+      <div><label class="label">Location</label><input class="input" id="nr_location"></div>
+      <div><label class="label">Seniority</label><input class="input" id="nr_seniority"></div>
+    </div>
+    <label class="label">Job description</label><textarea class="textarea" id="nr_jd" style="min-height:200px;"></textarea>
+    <label class="label" style="margin-top:10px;">Hiring manager notes</label><textarea class="textarea" id="nr_notes" style="min-height:70px;"></textarea>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="hideModal()">Cancel</button><button class="btn btn-primary" id="nr_go">Create + parse</button></div>
+  `);
+  document.getElementById("nr_go").addEventListener("click", async () => {
+    const btn = document.getElementById("nr_go"); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Parsing...';
+    try {
+      const r = await api("/api/roles", { method: "POST", body: JSON.stringify({
+        title: document.getElementById("nr_title").value, company: document.getElementById("nr_company").value,
+        location: document.getElementById("nr_location").value, seniority: document.getElementById("nr_seniority").value,
+        jd_text: document.getElementById("nr_jd").value, hiring_notes: document.getElementById("nr_notes").value,
+      })});
+      hideModal(); toast("Role parsed");
+      STATE.currentRole = await api(`/api/roles/${r.id}`);
+      await boot(); renderRolesView(document.getElementById("view-root"));
+    } catch (e) { toast("Failed: " + e.message, true); btn.disabled = false; btn.textContent = "Create + parse"; }
+  });
+}
+async function renderRoleDetail(root, r) {
+  // Fetch funnel metrics for this role
+  let funnel = null;
+  try { funnel = await api(`/api/metrics/funnel?role_id=${r.id}`); } catch {}
+  const chipList = (arr, cls = "chip") => (arr||[]).map(x => `<span class="${cls}">${esc(x)}</span>`).join(" ");
+
+  root.innerHTML = `
+    <button class="btn btn-ghost" onclick="STATE.currentRole=null; renderRolesView(document.getElementById('view-root'))" style="margin-bottom:12px;">← All roles</button>
+    <div class="profile-card">
+      <div class="profile-top">
+        <div style="min-width:0;flex:1;">
+          <h1 class="profile-name">${esc(r.title)}</h1>
+          <div class="profile-headline">${esc([r.company, r.location, r.seniority, r.employment_type].filter(Boolean).join(" · "))}</div>
+          <div class="profile-chips">
+            <span class="chip chip-gold">${esc(r.status)}</span>
+            <span class="chip">${r.match_count || 0} scored</span>
+            <span class="chip">${r.template_count || 0} templates</span>
+          </div>
+        </div>
+        <button class="btn btn-gold" id="scoreAllBtn">Score every candidate</button>
+      </div>
+      ${r.persona ? `<div class="profile-about"><strong>Persona:</strong> ${esc(r.persona)}</div>` : ''}
+      ${r.outreach_angle ? `<div class="profile-about" style="border-top:none;padding-top:6px;"><strong>Angle:</strong> ${esc(r.outreach_angle)}</div>` : ''}
+    </div>
+
+    ${funnel ? `<div class="card"><h2>Funnel</h2>${funnel.funnel.map(s => `
+      <div class="funnel-row">
+        <div class="funnel-label">${esc(s.stage)}</div>
+        <div class="funnel-bar"><div class="funnel-fill" style="width: ${Math.min(100, (s.count / (funnel.funnel[0].count || 1)) * 100)}%;"></div></div>
+        <div class="funnel-num">${s.count}</div>
+        <div class="funnel-pct">${s.pct_of_prev}%</div>
+      </div>`).join("")}</div>` : ''}
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div class="card">
+        <h2>Must-have</h2><div>${chipList(r.must_have, "chip chip-navy")}</div>
+        <h2 style="margin-top:14px;">Nice to have</h2><div>${chipList(r.nice_to_have)}</div>
+      </div>
+      <div class="card">
+        <h2>Ideal titles</h2><div>${chipList(r.target_titles)}</div>
+        <h2 style="margin-top:14px;">Target companies</h2><div>${chipList(r.target_companies)}</div>
+        <h2 style="margin-top:14px;">Keywords</h2><div>${chipList(r.search_keywords, "chip chip-gold")}</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Candidates scored</h2>
+      ${r.matches && r.matches.length ? `<table>
+        <thead><tr><th>Score</th><th>Candidate</th><th>Reason</th><th>Stage</th><th></th></tr></thead>
+        <tbody>${r.matches.map(m => `
+          <tr>
+            <td><div class="fit-pill ${fitClass(m.fit_score)}">${m.fit_score ?? '—'}</div></td>
+            <td><strong>${esc(m.candidate_name)}</strong><br><span style="color:var(--mute);font-size:12px;">${esc([m.current_title, m.current_company].filter(Boolean).join(" · "))}</span></td>
+            <td style="font-size:12px;">${esc(m.fit_reason)}<br>${(m.fit_bullets||[]).map(b => `<span class="badge-evidence">${esc(b)}</span>`).join(" ")}${(m.risk_flags||[]).map(b => `<span class="badge-risk">${esc(b)}</span>`).join(" ")}</td>
+            <td><select class="stage-select-inline" data-match-id="${m.id}" style="border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:11px;font-family:'IBM Plex Mono',monospace;">
+              ${["New","Reviewed","Shortlisted","Ready for Outreach","Sent","Replied","Interested","Not Interested","Closed"].map(s => `<option ${s === (m.stage || 'New') ? 'selected' : ''}>${esc(s)}</option>`).join("")}
+            </select></td>
+            <td><button class="btn btn-sm btn-ghost" data-cand-open="${m.candidate_id}">Open</button></td>
+          </tr>`).join("")}
+        </tbody></table>` : `<div class="empty">No scored candidates yet. Click <strong>Score every candidate</strong>.</div>`}
+    </div>
+    ${r.jd_text ? `<div class="card"><h2>Original JD <button class="btn btn-sm btn-ghost" id="reparseBtn">Re-parse</button></h2><pre style="white-space:pre-wrap;font-family:inherit;font-size:12px;color:var(--mute);max-height:240px;overflow:auto;margin:0;">${esc(r.jd_text)}</pre></div>` : ''}
+  `;
+  document.getElementById("scoreAllBtn").addEventListener("click", async () => {
+    const btn = document.getElementById("scoreAllBtn"); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Scoring...';
+    try { const res = await api(`/api/roles/${r.id}/score_all`, { method: "POST" }); toast(`Scored ${res.scored}/${res.total_candidates}`); STATE.currentRole = await api(`/api/roles/${r.id}`); await renderRolesView(root); }
+    catch (e) { toast("Failed: " + e.message, true); } finally { btn.disabled = false; btn.textContent = "Score every candidate"; }
+  });
+  document.querySelectorAll(".stage-select-inline").forEach(sel => sel.addEventListener("change", async e => { await api(`/api/matches/${sel.dataset.matchId}`, { method: "PATCH", body: JSON.stringify({ stage: e.target.value }) }); toast("Stage updated"); }));
+  document.querySelectorAll("[data-cand-open]").forEach(btn => btn.addEventListener("click", async () => { STATE.currentCandidate = await api(`/api/candidates/${btn.dataset.candOpen}`); switchView("candidates"); }));
+  const rep = document.getElementById("reparseBtn");
+  if (rep) rep.addEventListener("click", async () => { rep.disabled = true; rep.innerHTML = '<span class="spinner"></span>'; try { await api(`/api/roles/${r.id}/reparse`, { method: "POST" }); STATE.currentRole = await api(`/api/roles/${r.id}`); toast("Re-parsed"); await renderRolesView(root); } catch (e) { toast("Failed: " + e.message, true); } });
+}
+
+/* ============================================================
+   VIEW: Triage, Follow-ups, Templates (mostly unchanged)
+   ============================================================ */
+async function renderRepliesView(root) {
+  const rows = STATE.replies;
+  root.innerHTML = rows.length ? rows.map(r => `
+    <div class="card" data-rc-id="${r.id}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+        <div style="min-width:0;flex:1;">
+          <div style="font-weight:600;font-size:15px;">${esc(r.candidate_name)}</div>
+          <div style="font-size:12px;color:var(--mute);margin-bottom:10px;">${esc([r.current_title, r.current_company].filter(Boolean).join(" · "))}</div>
+          <div style="padding:10px 12px;background:var(--tmc-paper-2);border-radius:8px;font-size:13px;margin-bottom:10px;">"${esc(r.last_message_body)}"</div>
+          <div><strong>Suggested next:</strong> ${esc(r.suggested_action)}</div>
+        </div>
+        <div style="text-align:right;">
+          <span class="chip label-${r.label}">${esc(r.label.replace(/_/g,' '))}</span>
+          <div style="margin-top:5px;font-size:10px;color:var(--mute);font-family:'IBM Plex Mono',monospace;">${r.confidence || 0}% conf.</div>
+        </div>
+      </div>
+      ${r.suggested_reply ? `<div style="margin-top:10px;"><label class="label">Suggested reply</label><textarea class="textarea" data-reply-text="${r.id}">${esc(r.suggested_reply)}</textarea></div>` : ''}
+      <div style="display:flex;gap:5px;margin-top:10px;flex-wrap:wrap;">
+        <button class="btn btn-gold" data-copy-reply="${r.id}">Copy reply</button>
+        <button class="btn btn-ghost" data-open-cand="${r.candidate_id}">Open candidate</button>
+        <button class="btn btn-primary" data-mark-handled="${r.id}">✓ Handled</button>
+      </div>
+    </div>`).join("") : `<div class="card empty"><img src="/tmc_logo.jpg"><div>Triage queue is empty. You're caught up.</div></div>`;
+
+  document.querySelectorAll("[data-mark-handled]").forEach(btn => btn.addEventListener("click", async () => { await api(`/api/replies/triage/${btn.dataset.markHandled}`, { method: "PATCH", body: JSON.stringify({ handled: true }) }); toast("Handled"); await boot(); }));
+  document.querySelectorAll("[data-copy-reply]").forEach(btn => btn.addEventListener("click", async () => { const ta = document.querySelector(`textarea[data-reply-text="${btn.dataset.copyReply}"]`); const text = ta ? ta.value : ""; if (!text) return toast("Nothing to copy", true); await navigator.clipboard.writeText(text); toast("Copied"); }));
+  document.querySelectorAll("[data-open-cand]").forEach(btn => btn.addEventListener("click", async () => { STATE.currentCandidate = await api(`/api/candidates/${btn.dataset.openCand}`); switchView("candidates"); }));
+}
+
+async function renderFollowupsView(root) {
+  const tasks = STATE.tasks;
+  root.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;">${tasks.length} open follow-up${tasks.length !== 1 ? 's' : ''}</h3>
+      <button class="btn btn-ghost" onclick="detectStaleNow()">Detect stale (14d)</button>
+    </div>
+    ${tasks.length ? `<div class="card" style="padding:0;"><table>
+      <thead><tr><th>Task</th><th>Candidate</th><th>Due</th><th>Type</th><th></th></tr></thead>
+      <tbody>${tasks.map(t => `<tr>
+        <td>${esc(t.title)}</td><td>${esc(t.candidate_name)}</td>
+        <td><span class="chip ${t.overdue ? 'chip-bad' : 'chip-outline'}">${fmtOverdue(t.due_at) || '—'}</span></td>
+        <td><span class="chip">${esc(t.task_type.replace(/_/g,' '))}</span></td>
+        <td>
+          <button class="btn btn-sm btn-primary" data-task-done="${t.id}">✓</button>
+          ${t.candidate_profile_url ? `<a class="btn btn-sm btn-ghost" href="${esc(t.candidate_profile_url)}" target="_blank">LinkedIn ↗</a>` : ''}
+          <button class="btn btn-sm btn-ghost" data-task-open="${t.entity_id}">Open</button>
+        </td>
+      </tr>`).join("")}</tbody></table></div>` : `<div class="card empty"><img src="/tmc_logo.jpg"><div>No follow-ups due.</div></div>`}
+  `;
+  document.querySelectorAll("[data-task-done]").forEach(btn => btn.addEventListener("click", () => markTaskDone(btn.dataset.taskDone)));
+  document.querySelectorAll("[data-task-open]").forEach(btn => btn.addEventListener("click", async () => { STATE.currentCandidate = await api(`/api/candidates/${btn.dataset.taskOpen}`); switchView("candidates"); }));
+}
+
+async function renderTemplatesView(root) {
+  const templates = STATE.templates;
+  root.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;">${templates.length} template${templates.length !== 1 ? 's' : ''}</h3>
+      <button class="btn btn-primary" id="newTmplBtn">+ New template</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;">
+      ${templates.map(t => `<div class="card" style="margin:0;">
+        <div><strong>${esc(t.name)}</strong></div>
+        <div style="font-size:11px;color:var(--mute);font-family:'IBM Plex Mono',monospace;">${esc(t.template_type)} · ${esc(t.channel)}${t.role_id ? ` · role #${t.role_id}` : ''}</div>
+        <textarea class="textarea" readonly style="background:var(--tmc-paper-2);font-size:12px;min-height:110px;margin-top:8px;">${esc(t.body_template)}</textarea>
+        <div style="display:flex;gap:5px;margin-top:8px;"><button class="btn btn-sm btn-ghost" data-tmpl-edit="${t.id}">Edit</button><button class="btn btn-sm btn-danger" data-tmpl-del="${t.id}">Delete</button></div>
+      </div>`).join("")}
+    </div>
+    <div class="card" style="margin-top:14px;"><h3>Variables</h3><div style="display:flex;flex-wrap:wrap;gap:5px;">
+      ${["first_name","full_name","current_company","current_title","role_title","role_company","role_location","outreach_angle","matched_skill"].map(v => `<span class="chip chip-navy">{{${v}}}</span>`).join(" ")}
+    </div></div>
+  `;
+  document.getElementById("newTmplBtn").addEventListener("click", () => openTemplateEditor(null));
+  document.querySelectorAll("[data-tmpl-edit]").forEach(btn => btn.addEventListener("click", () => openTemplateEditor(templates.find(x => x.id == btn.dataset.tmplEdit))));
+  document.querySelectorAll("[data-tmpl-del]").forEach(btn => btn.addEventListener("click", async () => { if (!confirm("Delete?")) return; await api(`/api/templates/${btn.dataset.tmplDel}`, { method: "DELETE" }); toast("Deleted"); await boot(); }));
+}
+function openTemplateEditor(t) {
+  const editing = !!t;
+  showModal(`
+    <h2>${editing ? 'Edit template' : 'New template'}</h2>
+    <div class="form-grid">
+      <div><label class="label">Name</label><input class="input" id="tmplName" value="${esc(t?.name || '')}"></div>
+      <div><label class="label">Type</label><select class="input" id="tmplType">${["connection_note","first_outreach","follow_up_1","follow_up_2","close_loop"].map(x => `<option ${t && t.template_type === x ? 'selected' : ''}>${x}</option>`).join("")}</select></div>
+      <div><label class="label">Channel</label><select class="input" id="tmplChannel"><option ${t && t.channel === 'linkedin' ? 'selected' : ''}>linkedin</option><option ${t && t.channel === 'email' ? 'selected' : ''}>email</option></select></div>
+      <div><label class="label">Role</label><select class="input" id="tmplRole"><option value="">(any)</option>${STATE.roles.map(r => `<option value="${r.id}" ${t && t.role_id === r.id ? 'selected' : ''}>${esc(r.title)}</option>`).join("")}</select></div>
+    </div>
+    <label class="label">Body</label><textarea class="textarea" id="tmplBody" style="min-height:180px;">${esc(t?.body_template || '')}</textarea>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="hideModal()">Cancel</button><button class="btn btn-primary" id="tmplSave">${editing ? 'Save' : 'Create'}</button></div>
+  `);
+  document.getElementById("tmplSave").addEventListener("click", async () => {
+    const payload = { name: document.getElementById("tmplName").value, template_type: document.getElementById("tmplType").value, channel: document.getElementById("tmplChannel").value, role_id: parseInt(document.getElementById("tmplRole").value) || null, body_template: document.getElementById("tmplBody").value };
+    if (editing) await api(`/api/templates/${t.id}`, { method: "PATCH", body: JSON.stringify(payload) });
+    else await api("/api/templates", { method: "POST", body: JSON.stringify(payload) });
+    hideModal(); toast("Saved"); await boot();
+  });
+}
+
+/* ============================================================
+   VIEW: Campaigns
+   ============================================================ */
+async function renderCampaignsView(root) {
+  if (STATE.currentCampaign) return renderCampaignDetail(root, STATE.currentCampaign);
+  root.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;">${STATE.campaigns.length} campaign${STATE.campaigns.length !== 1 ? 's' : ''}</h3>
+      <button class="btn btn-primary" id="newCampBtn">+ New campaign</button>
+    </div>
+    ${STATE.campaigns.length ? `<div class="card" style="padding:0;"><table>
+      <thead><tr><th>Name</th><th>Channel</th><th>Recipients</th><th>Sent</th><th>Replied</th><th>Status</th><th></th></tr></thead>
+      <tbody>${STATE.campaigns.map(c => `<tr style="cursor:pointer;" data-camp="${c.id}">
+        <td><strong>${esc(c.name)}</strong></td><td>${esc(c.channel)}</td><td>${c.recipient_count}</td>
+        <td>${(c.status_counts||{}).sent || 0}</td><td>${(c.status_counts||{}).replied || 0}</td>
+        <td><span class="chip ${c.status === 'done' ? 'chip-ok' : 'chip-outline'}">${esc(c.status)}</span></td>
+        <td>Open →</td>
+      </tr>`).join("")}</tbody></table></div>` : `<div class="card empty"><img src="/tmc_logo.jpg"><div>No campaigns yet. Campaigns bulk-draft personalized messages for every candidate in a pool, so you review each one before sending.</div></div>`}
+  `;
+  document.getElementById("newCampBtn").addEventListener("click", () => openCampaignCreator(null));
+  document.querySelectorAll("[data-camp]").forEach(tr => tr.addEventListener("click", async () => { STATE.currentCampaign = await api(`/api/campaigns/${tr.dataset.camp}`); renderCampaignsView(root); }));
+}
+function openCampaignCreator(poolId) {
+  if (!STATE.templates.length) return toast("Create a template first", true);
+  if (!STATE.pools.length && !poolId) return toast("Create a pool first", true);
+  showModal(`
+    <h2>New campaign</h2>
+    <p>Claude will draft a personalized message for every candidate in the pool. You review each one before sending.</p>
+    <div class="form-grid">
+      <div><label class="label">Name</label><input class="input" id="camp_name" placeholder="Senior MLEs, July push"></div>
+      <div><label class="label">Pool</label><select class="input" id="camp_pool">
+        ${STATE.pools.map(p => `<option value="${p.id}" ${poolId == p.id ? 'selected' : ''}>${esc(p.name)} (${p.count})</option>`).join("")}
+      </select></div>
+      <div><label class="label">Template</label><select class="input" id="camp_tmpl">
+        ${STATE.templates.map(t => `<option value="${t.id}">${esc(t.name)} (${esc(t.template_type)})</option>`).join("")}
+      </select></div>
+      <div><label class="label">Channel</label><select class="input" id="camp_ch"><option value="linkedin">LinkedIn (paste)</option><option value="email">Email</option></select></div>
+    </div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="hideModal()">Cancel</button><button class="btn btn-primary" id="camp_go">Create + draft all</button></div>
+  `);
+  document.getElementById("camp_go").addEventListener("click", async () => {
+    const btn = document.getElementById("camp_go"); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Drafting for every candidate...';
+    try {
+      const res = await api("/api/campaigns", { method: "POST", body: JSON.stringify({
+        name: document.getElementById("camp_name").value || "Untitled campaign",
+        pool_id: parseInt(document.getElementById("camp_pool").value),
+        template_id: parseInt(document.getElementById("camp_tmpl").value),
+        channel: document.getElementById("camp_ch").value,
+      })});
+      hideModal(); toast(`Drafted ${res.recipients} messages`);
+      STATE.currentCampaign = await api(`/api/campaigns/${res.id}`);
+      await boot();
+    } catch (e) { toast("Failed: " + e.message, true); btn.disabled = false; btn.textContent = "Create + draft"; }
+  });
+}
+function renderCampaignDetail(root, camp) {
+  root.innerHTML = `
+    <button class="btn btn-ghost" onclick="STATE.currentCampaign=null; renderCampaignsView(document.getElementById('view-root'))" style="margin-bottom:12px;">← All campaigns</button>
+    <div class="profile-card">
+      <div class="profile-top">
+        <div style="flex:1;"><h1 class="profile-name">${esc(camp.name)}</h1><div class="profile-headline">Channel: ${esc(camp.channel)} · ${camp.recipients.length} recipients</div></div>
+      </div>
+    </div>
+    ${camp.recipients.map(r => `
+      <div class="card" data-rec-id="${r.id}">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;">
+          <div><strong>${esc(r.candidate_name)}</strong><span style="color:var(--mute);font-size:12px;margin-left:8px;">${esc([r.current_title, r.current_company].filter(Boolean).join(" · "))}</span></div>
+          <span class="chip ${r.status === 'sent' ? 'chip-ok' : r.status === 'failed' ? 'chip-bad' : 'chip-outline'}">${esc(r.status)}</span>
+        </div>
+        <textarea class="textarea rec-draft" style="min-height:120px;">${esc(r.draft_text || '')}</textarea>
+        ${r.error ? `<div style="font-size:11px;color:var(--bad);margin-top:5px;">${esc(r.error)}</div>` : ''}
+        <div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap;">
+          <button class="btn btn-sm btn-ghost rec-save">Save draft</button>
+          <button class="btn btn-sm btn-gold rec-copy">Copy</button>
+          <button class="btn btn-sm btn-primary rec-sent">Mark sent</button>
+          <button class="btn btn-sm btn-ghost rec-skip">Skip</button>
+        </div>
+      </div>`).join("")}
+  `;
+  document.querySelectorAll("[data-rec-id]").forEach(div => {
+    const id = div.dataset.recId;
+    div.querySelector(".rec-save").addEventListener("click", async () => { await api(`/api/campaigns/recipients/${id}`, { method: "PATCH", body: JSON.stringify({ draft_text: div.querySelector(".rec-draft").value }) }); toast("Saved"); });
+    div.querySelector(".rec-copy").addEventListener("click", async () => { await navigator.clipboard.writeText(div.querySelector(".rec-draft").value); toast("Copied"); });
+    div.querySelector(".rec-sent").addEventListener("click", async () => { await api(`/api/campaigns/recipients/${id}`, { method: "PATCH", body: JSON.stringify({ status: "sent" }) }); toast("Marked sent"); STATE.currentCampaign = await api(`/api/campaigns/${camp.id}`); renderCampaignsView(document.getElementById("view-root")); });
+    div.querySelector(".rec-skip").addEventListener("click", async () => { await api(`/api/campaigns/recipients/${id}`, { method: "PATCH", body: JSON.stringify({ status: "skipped" }) }); toast("Skipped"); STATE.currentCampaign = await api(`/api/campaigns/${camp.id}`); renderCampaignsView(document.getElementById("view-root")); });
+  });
+}
+
+/* ============================================================
+   VIEW: Kanban
+   ============================================================ */
+async function renderKanbanView(root) {
+  const stages = ["New","Engaged","Shortlisted","Sent","Replied","Follow-up Needed","Closed"];
+  // Only show candidates the recruiter has explicitly added to the board
+  const onBoard = (STATE.candidates || []).filter(c => c.in_kanban);
+  // People with conversations, not yet on the board — pickable in the dropdown
+  const addable = (STATE.candidates || []).filter(c => !c.in_kanban && (c.conversation_count || 0) > 0);
+
+  const byStage = {}; stages.forEach(s => byStage[s] = []);
+  onBoard.forEach(c => { const s = stages.includes(c.stage) ? c.stage : "New"; byStage[s].push(c); });
+
+  root.innerHTML = `
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+      <div style="font-size:12px;color:var(--mute);">${onBoard.length} on board · ${addable.length} people with conversations available</div>
+      <div style="flex:1;"></div>
+      <select id="kanbanAddSel" class="input" style="max-width:320px;">
+        <option value="">+ Add a person to the board…</option>
+        ${addable.map(c => `<option value="${c.id}">${esc(c.full_name)}${c.current_company ? ' · ' + esc(c.current_company) : ''}</option>`).join("")}
+      </select>
+      <button class="btn btn-gold btn-sm" id="kanbanAddBtn">Add</button>
+    </div>
+    <div class="kanban">${stages.map(s => `
+      <div class="kanban-col" data-stage="${esc(s)}">
+        <h3>${esc(s)} <span class="count">${byStage[s].length}</span></h3>
+        ${byStage[s].map(c => `<div class="kanban-card" draggable="true" data-id="${c.id}">
+          <button class="kc-remove" data-remove-id="${c.id}" title="Remove from board">×</button>
+          <div class="kc-name">${esc(c.full_name)}</div>
+          <div class="kc-sub">${esc([c.current_title, c.current_company].filter(Boolean).join(" · ") || c.headline || '')}</div>
+        </div>`).join("")}
+      </div>`).join("")}
+    </div>`;
+
+  // --- Add person
+  document.getElementById("kanbanAddBtn").addEventListener("click", async () => {
+    const v = document.getElementById("kanbanAddSel").value;
+    if (!v) return toast("Pick a person first", true);
+    try {
+      await api(`/api/candidates/${v}/kanban`, { method: "PATCH", body: JSON.stringify({ in_kanban: true }) });
+      toast("Added to board");
+      await boot();
+    } catch (e) { toast("Add failed: " + e.message, true); }
+  });
+
+  // --- Remove (× button) — stopPropagation so it doesn't trigger the card click
+  document.querySelectorAll("[data-remove-id]").forEach(btn => btn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    try {
+      await api(`/api/candidates/${btn.dataset.removeId}/kanban`, { method: "PATCH", body: JSON.stringify({ in_kanban: false }) });
+      toast("Removed from board");
+      await boot();
+    } catch (err) { toast("Remove failed: " + err.message, true); }
+  }));
+
+  let dragCardId = null;
+  document.querySelectorAll(".kanban-card").forEach(card => {
+    card.addEventListener("dragstart", e => { dragCardId = card.dataset.id; card.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; });
+    card.addEventListener("dragend", () => card.classList.remove("dragging"));
+    card.addEventListener("click", async (e) => {
+      if (e.target.closest("[data-remove-id]")) return;
+      STATE.currentCandidate = await api(`/api/candidates/${card.dataset.id}`);
+      switchView("candidates");
+    });
+  });
+  document.querySelectorAll(".kanban-col").forEach(col => {
+    col.addEventListener("dragover", e => { e.preventDefault(); col.classList.add("drag-over"); });
+    col.addEventListener("dragleave", () => col.classList.remove("drag-over"));
+    col.addEventListener("drop", async e => {
+      e.preventDefault(); col.classList.remove("drag-over");
+      if (!dragCardId) return;
+      try { await api(`/api/candidates/${dragCardId}`, { method: "PATCH", body: JSON.stringify({ stage: col.dataset.stage }) }); toast(`Moved to ${col.dataset.stage}`); await boot(); }
+      catch (e) { toast("Failed: " + e.message, true); }
+    });
+  });
+}
+
+/* ============================================================
+   VIEW: Settings (integrations + team)
+   ============================================================ */
+async function renderSettingsView(root) {
+  const s = STATE.settings || {};
+  const fieldRow = (key, label, placeholder, type = "password") => {
+    const setting = s[key] || { set: false };
+    return `
+      <div class="form-grid" style="align-items:end;">
+        <div style="flex:1;">
+          <label class="label">${esc(label)} ${setting.set ? '<span class="chip chip-ok" style="margin-left:6px;">SET</span>' : '<span class="chip chip-outline" style="margin-left:6px;">NOT SET</span>'}</label>
+          <input class="input" id="set_${key}" type="${type}" placeholder="${esc(placeholder)}${setting.preview ? ' (current: ' + setting.preview + ')' : ''}">
+        </div>
+        <button class="btn btn-primary" data-save-key="${key}" style="margin-bottom:0;">Save</button>
+      </div>`;
+  };
+  root.innerHTML = `
+    <div class="card">
+      <h2>Apify — LinkedIn profile enrichment</h2>
+      <p style="font-size:12px;color:var(--mute);">Proxycurl has shut down; we now use an Apify actor. <strong>Default:</strong> <code>harvestapi/linkedin-profile-scraper</code> — works on the free Apify plan via API ($4 / 1k profiles, pay-as-you-go). Get a token at <a href="https://console.apify.com/account/integrations" target="_blank">console.apify.com</a>. If you set a different actor ID that disallows API runs on the free plan (e.g. <code>2SyF0bVxmgGr8IVCZ</code>), enrichment will fail with a clear error — just swap the Actor ID back to <code>harvestapi/linkedin-profile-scraper</code>.</p>
+      ${fieldRow("apify_api_key", "Apify API token", "apify_api_...")}
+      ${fieldRow("apify_actor_id", "Actor ID (override)", "harvestapi/linkedin-profile-scraper", "text")}
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <input class="input" id="apifyTestUrl" placeholder="https://www.linkedin.com/in/williamhgates/" style="max-width:380px;">
+        <button class="btn btn-gold" onclick="testApify()">Test actor</button>
+      </div>
+      <div id="apifyTestOut" style="margin-top:8px;font-size:12px;"></div>
+    </div>
+    <div class="card" style="border-color: var(--tmc-gold);">
+      <h2 style="margin-top:0;">🔑 Chrome Extension — your personal key</h2>
+      <p style="font-size:13px;">
+        Install the <strong>TMC Recruiter</strong> Chrome extension, then paste the key below
+        into the extension's popup. Every conversation you save will land in
+        <strong>your</strong> dashboard automatically.
+      </p>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;">
+        <input class="input" id="myApiKeyField" type="text" readonly value="${esc(ME?.api_key || '')}"
+          placeholder="Click Reveal to load your tmc_… key"
+          style="flex:1;min-width:280px;font-family:monospace;background:#fef8e8;">
+        <button class="btn btn-ghost" id="revealApiKey" title="Fetch your current key from the server">Reveal</button>
+        <button class="btn btn-primary" id="copyApiKey">Copy</button>
+        <button class="btn btn-ghost" id="rotateApiKey" title="Generates a new key. The old one stops working immediately — you'll need to paste the new key into the extension.">Regenerate</button>
+      </div>
+      <p style="font-size:11px;color:var(--mute);margin-top:8px;">
+        Backend URL for the extension: <code>${location.origin}</code>
+        · Paste BOTH fields into the extension popup; they must match.
+      </p>
+      <ol style="font-size:12px;color:var(--mute);margin:8px 0 0 16px;padding:0;line-height:1.6;">
+        <li>Copy the key above.</li>
+        <li>Open the TMC Recruiter extension icon in Chrome.</li>
+        <li>Paste into <em>Your personal key</em> and set <em>Backend URL</em> to <code>${location.origin}</code>.</li>
+        <li>Click <em>Save</em> — you should see <em>✓ Connected as ${esc(ME?.display_name || ME?.username || 'you')}</em>.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h2>Greenhouse ATS push</h2>
+      <p style="font-size:12px;color:var(--mute);">Harvest API key + user id (on-behalf-of). <a href="https://developers.greenhouse.io/harvest.html" target="_blank">Docs</a>.</p>
+      ${fieldRow("greenhouse_api_key", "Harvest API key", "Paste key...")}
+      ${fieldRow("greenhouse_on_behalf_of", "On-behalf-of user ID", "12345", "text")}
+    </div>
+    <div class="card">
+      <h2>Lever ATS push</h2>
+      ${fieldRow("lever_api_key", "Lever API key", "Paste key...")}
+    </div>
+    <div class="card">
+      <h2>Team</h2>
+      <p style="font-size:12px;color:var(--mute);">Active users on this workspace. Admins can add teammates.</p>
+      <table>
+        <thead><tr><th>User</th><th>Role</th><th>Email</th></tr></thead>
+        <tbody>${STATE.users.map(u => `<tr><td><strong>${esc(u.display_name)}</strong> <span style="color:var(--mute);">@${esc(u.username)}</span></td><td><span class="chip ${u.role === 'admin' ? 'chip-gold' : 'chip-outline'}">${esc(u.role)}</span></td><td></td></tr>`).join("")}</tbody>
+      </table>
+      ${ME && ME.role === 'admin' ? `<button class="btn btn-primary" id="addUserBtn" style="margin-top:10px;">+ Add teammate</button>` : '<div style="font-size:12px;color:var(--mute);margin-top:8px;">Only admins can add users.</div>'}
+    </div>
+    <div class="card">
+      <h2>Me</h2>
+      <p>Currently logged in as <strong>${esc(ME?.display_name || '(api-key)')}</strong>. ${ME ? 'Role: <span class="chip chip-gold">' + esc(ME.role) + '</span>' : ''}</p>
+      <p style="font-size:12px;color:var(--mute);">Default password is <code>tmc-admin</code>. Change it by asking an admin to recreate your user (or set <code>DEFAULT_ADMIN_PASSWORD</code> env var before boot).</p>
+    </div>
+    <div class="card" style="border-color: var(--bad-soft);">
+      <h2 style="color: var(--bad);">⚠ Danger zone — clear test / mock data</h2>
+      <p style="font-size:12px;color:var(--mute);">Deletes all candidates, conversations, roles, templates, pools, tasks, campaigns, and stage history. Keeps <strong>users</strong> and <strong>settings</strong> (your API keys).</p>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+        <button class="btn" style="background: var(--bad); color: white;" onclick="purgeData(false)">Wipe EVERYTHING</button>
+      </div>
+    </div>
+  `;
+  document.querySelectorAll("[data-save-key]").forEach(btn => btn.addEventListener("click", async () => {
+    const key = btn.dataset.saveKey;
+    const val = document.getElementById(`set_${key}`).value;
+    if (!val) return toast("Empty value", true);
+    try { await api("/api/settings", { method: "POST", body: JSON.stringify({ key, value: val }) }); toast("Saved"); await boot(); } catch (e) { toast("Failed: " + e.message, true); }
+  }));
+  const add = document.getElementById("addUserBtn");
+  if (add) add.addEventListener("click", () => openAddUserModal());
+
+  const revealBtn = document.getElementById("revealApiKey");
+  if (revealBtn) revealBtn.addEventListener("click", async () => {
+    revealBtn.disabled = true;
+    try {
+      const r = await api("/api/auth/api_key");
+      if (r && r.api_key) {
+        ME.api_key = r.api_key;
+        document.getElementById("myApiKeyField").value = r.api_key;
+        toast("Key revealed — copy it into the extension");
+      } else {
+        toast("No key returned — try Regenerate", true);
+      }
+    } catch (e) { toast("Failed: " + e.message, true); }
+    revealBtn.disabled = false;
+  });
+  const copyBtn = document.getElementById("copyApiKey");
+  if (copyBtn) copyBtn.addEventListener("click", async () => {
+    const fld = document.getElementById("myApiKeyField");
+    if (!fld.value) { toast("Click Reveal first", true); return; }
+    try { await navigator.clipboard.writeText(fld.value); toast("Extension key copied"); }
+    catch { fld.select(); document.execCommand("copy"); toast("Copied"); }
+  });
+  const rotateBtn = document.getElementById("rotateApiKey");
+  if (rotateBtn) rotateBtn.addEventListener("click", async () => {
+    if (!confirm("Regenerate your extension key?\n\nThe old key stops working immediately — you'll need to paste the new key into the Chrome extension popup.")) return;
+    try {
+      const r = await api("/api/auth/api_key/rotate", { method: "POST" });
+      ME.api_key = r.api_key;
+      document.getElementById("myApiKeyField").value = r.api_key;
+      toast("New key generated — update the extension now");
+    } catch (e) { toast("Failed: " + e.message, true); }
+  });
+}
+function openAddUserModal() {
+  showModal(`
+    <h2>Add teammate</h2>
+    <div class="form-grid">
+      <div><label class="label">Username</label><input class="input" id="u_username"></div>
+      <div><label class="label">Display name</label><input class="input" id="u_display"></div>
+      <div><label class="label">Email</label><input class="input" id="u_email"></div>
+      <div><label class="label">Role</label><select class="input" id="u_role"><option>recruiter</option><option>admin</option></select></div>
+      <div><label class="label">Initial password</label><input class="input" id="u_pass" type="password"></div>
+    </div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="hideModal()">Cancel</button><button class="btn btn-primary" id="u_save">Create</button></div>
+  `);
+  document.getElementById("u_save").addEventListener("click", async () => {
+    try {
+      await api("/api/auth/users", { method: "POST", body: JSON.stringify({
+        username: document.getElementById("u_username").value.trim(),
+        display_name: document.getElementById("u_display").value.trim(),
+        email: document.getElementById("u_email").value.trim(),
+        role: document.getElementById("u_role").value,
+        password: document.getElementById("u_pass").value,
+      })});
+      hideModal(); toast("User created"); await boot();
+    } catch (e) { toast("Failed: " + e.message, true); }
+  });
+}
+
+/* ============================================================
+   VIEW: Admin — user management + workspace stats
+   ============================================================ */
+async function renderAdminView(root) {
+  if (!ME || !ME.is_admin) {
+    root.innerHTML = `<div class="card"><h2>Admin only</h2><p>You need admin permissions to see this page.</p></div>`;
+    return;
+  }
+  root.innerHTML = `<div class="card"><p>Loading admin dashboard...</p></div>`;
+  let stats = {}, usersRes = { users: [] };
+  try {
+    [stats, usersRes] = await Promise.all([
+      api("/api/admin/stats"),
+      api("/api/admin/users"),
+    ]);
+  } catch (e) {
+    root.innerHTML = `<div class="card"><h2>Failed to load</h2><p>${esc(e.message)}</p></div>`;
+    return;
+  }
+  const users = usersRes.users || [];
+  const settings = STATE.settings || {};
+  const allowRegister = settings.allow_self_register?.value === "1";
+  const autoApprove   = settings.auto_approve_signups?.value === "1";
+
+  root.innerHTML = `
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:14px;">
+      ${[
+        ["Users total", stats.users_total],
+        ["Active users", stats.users_active],
+        ["Candidates", stats.candidates],
+        ["Conversations", stats.conversations],
+        ["Messages", stats.messages],
+        ["Roles", stats.roles],
+        ["Briefs done", stats.analyses_done],
+        ["Briefs pending", stats.analyses_pending],
+        ["Briefs failed", stats.analyses_failed],
+      ].map(([label, val]) => `
+        <div class="card" style="text-align:center;">
+          <div style="font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.08em;">${esc(label)}</div>
+          <div style="font-size:28px;font-weight:700;color:var(--tmc-navy);">${val || 0}</div>
+        </div>
+      `).join("")}
+    </div>
+
+    <div class="card" style="margin-bottom:14px;">
+      <h2 style="margin-top:0;">Public sign-ups</h2>
+      <p style="font-size:12px;color:var(--mute);">Turn on to let strangers create accounts (for when you publish the extension). Leave <em>auto-approve</em> off to manually activate each new user.</p>
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+        <label style="display:flex;gap:6px;align-items:center;cursor:pointer;">
+          <input type="checkbox" id="tgSelfRegister" ${allowRegister ? "checked" : ""}> Allow self-registration
+        </label>
+        <label style="display:flex;gap:6px;align-items:center;cursor:pointer;">
+          <input type="checkbox" id="tgAutoApprove" ${autoApprove ? "checked" : ""}> Auto-approve new accounts
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <h2 style="margin:0;">Users (${users.length})</h2>
+        <button class="btn btn-primary btn-sm" id="adminAddUserBtn">+ New user</button>
+      </div>
+      <table>
+        <thead><tr>
+          <th>User</th><th>Role</th><th>Email</th>
+          <th style="text-align:right;">Candidates</th>
+          <th style="text-align:right;">Threads</th>
+          <th>Status</th><th>Actions</th>
+        </tr></thead>
+        <tbody>
+          ${users.map(u => `
+            <tr data-user-id="${u.id}">
+              <td><strong>${esc(u.display_name || u.username)}</strong><div style="color:var(--mute);font-size:11px;">@${esc(u.username)}</div></td>
+              <td><span class="chip ${u.is_admin ? 'chip-gold' : 'chip-outline'}">${u.is_admin ? 'admin' : esc(u.role || 'recruiter')}</span></td>
+              <td style="font-size:12px;color:var(--mute);">${esc(u.email || '')}</td>
+              <td style="text-align:right;">${u.candidate_count || 0}</td>
+              <td style="text-align:right;">${u.conversation_count || 0}</td>
+              <td>${u.is_active
+                ? '<span class="chip chip-ok">active</span>'
+                : '<span class="chip chip-warn">pending</span>'}</td>
+              <td style="white-space:nowrap;">
+                ${u.is_active
+                  ? `<button class="btn btn-ghost btn-sm" data-act="deactivate" data-id="${u.id}">Suspend</button>`
+                  : `<button class="btn btn-gold btn-sm" data-act="activate" data-id="${u.id}">Approve</button>`}
+                ${u.is_admin
+                  ? `<button class="btn btn-ghost btn-sm" data-act="demote" data-id="${u.id}">Demote</button>`
+                  : `<button class="btn btn-ghost btn-sm" data-act="promote" data-id="${u.id}">Make admin</button>`}
+                <button class="btn btn-ghost btn-sm" data-act="reset" data-id="${u.id}">Reset pw</button>
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  document.getElementById("tgSelfRegister").addEventListener("change", async (e) => {
+    await api("/api/settings", { method: "POST", body: JSON.stringify({ key: "allow_self_register", value: e.target.checked ? "1" : "0" }) });
+    toast("Saved"); await boot();
+  });
+  document.getElementById("tgAutoApprove").addEventListener("change", async (e) => {
+    await api("/api/settings", { method: "POST", body: JSON.stringify({ key: "auto_approve_signups", value: e.target.checked ? "1" : "0" }) });
+    toast("Saved"); await boot();
+  });
+  document.getElementById("adminAddUserBtn").addEventListener("click", () => openAddUserModal());
+
+  document.querySelectorAll("[data-act]").forEach(btn => btn.addEventListener("click", async () => {
+    const id = btn.dataset.id, act = btn.dataset.act;
+    const body = {};
+    if (act === "activate")   body.is_active = true;
+    if (act === "deactivate") body.is_active = false;
+    if (act === "promote")    body.is_admin  = true;
+    if (act === "demote")     body.is_admin  = false;
+    if (act === "reset") {
+      const pw = prompt("New password for this user:");
+      if (!pw) return;
+      body.reset_password = pw;
+    }
+    try {
+      await api(`/api/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+      toast("Updated"); renderAdminView(root);
+    } catch (e) { toast("Failed: " + e.message, true); }
+  }));
+}
+
+/* ============================================================
+   Cmd+K palette
+   ============================================================ */
+function openPalette() {
+  document.getElementById("paletteBg").classList.add("show");
+  const input = document.getElementById("paletteInput");
+  input.value = ""; input.focus();
+  document.getElementById("paletteResults").innerHTML = '<div class="empty">Start typing...</div>';
+}
+function closePalette() { document.getElementById("paletteBg").classList.remove("show"); }
+document.getElementById("paletteBg").addEventListener("click", e => { if (e.target.id === "paletteBg") closePalette(); });
+document.addEventListener("keydown", e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); openPalette(); }
+  if (e.key === "Escape") { closePalette(); hideModal(); }
+});
+let paletteResults = [];
+let paletteHl = 0;
+document.getElementById("paletteInput").addEventListener("input", async e => {
+  const q = e.target.value.trim();
+  if (!q) { document.getElementById("paletteResults").innerHTML = '<div class="empty">Start typing...</div>'; return; }
+  clearTimeout(window._pt);
+  window._pt = setTimeout(async () => {
+    try {
+      const res = await api(`/api/search?q=${encodeURIComponent(q)}`);
+      paletteResults = [];
+      (res.candidates || []).forEach(x => paletteResults.push({ ...x, type: "candidate", label: x.full_name, sub: x.subtitle }));
+      (res.roles || []).forEach(x => paletteResults.push({ ...x, type: "role", label: x.title, sub: x.subtitle }));
+      (res.pools || []).forEach(x => paletteResults.push({ ...x, type: "pool", label: x.name, sub: `${x.count} members` }));
+      (res.templates || []).forEach(x => paletteResults.push({ ...x, type: "template", label: x.name, sub: x.subtitle }));
+      paletteHl = 0;
+      renderPaletteResults();
+    } catch (err) {}
+  }, 160);
+});
+function renderPaletteResults() {
+  const container = document.getElementById("paletteResults");
+  if (!paletteResults.length) { container.innerHTML = '<div class="empty">No results.</div>'; return; }
+  const groups = {};
+  paletteResults.forEach(r => { groups[r.type] = groups[r.type] || []; groups[r.type].push(r); });
+  let html = "";
+  let idx = 0;
+  Object.keys(groups).forEach(type => {
+    html += `<div class="palette-section">${type}s</div>`;
+    groups[type].forEach(item => {
+      html += `<div class="palette-item ${idx === paletteHl ? 'hl' : ''}" data-idx="${idx}" data-type="${item.type}" data-id="${item.id}">
+        <div><strong>${esc(item.label)}</strong><div class="pi-sub">${esc(item.sub || '')}</div></div>
+        <span class="chip chip-outline" style="opacity:.6;">${type}</span>
+      </div>`;
+      idx++;
+    });
+  });
+  container.innerHTML = html;
+  container.querySelectorAll(".palette-item").forEach(el => el.addEventListener("click", () => openPaletteItem(parseInt(el.dataset.idx))));
+}
+async function openPaletteItem(i) {
+  const item = paletteResults[i];
+  if (!item) return;
+  closePalette();
+  if (item.type === "candidate") { STATE.currentCandidate = await api(`/api/candidates/${item.id}`); switchView("candidates"); }
+  else if (item.type === "role") { STATE.currentRole = await api(`/api/roles/${item.id}`); switchView("roles"); }
+  else if (item.type === "pool") { STATE.candidateFilter.pool_id = String(item.id); switchView("candidates"); }
+  else if (item.type === "template") { switchView("templates"); }
+}
+document.getElementById("paletteInput").addEventListener("keydown", e => {
+  if (e.key === "ArrowDown") { paletteHl = Math.min(paletteResults.length - 1, paletteHl + 1); renderPaletteResults(); e.preventDefault(); }
+  else if (e.key === "ArrowUp") { paletteHl = Math.max(0, paletteHl - 1); renderPaletteResults(); e.preventDefault(); }
+  else if (e.key === "Enter") { openPaletteItem(paletteHl); }
+});
+
+/* ============================================================
+   Boot + periodic refresh
+   ============================================================ */
+if (SESSION_TOKEN) { boot(); } else { showSetup(); }
+setInterval(() => { if (SESSION_TOKEN && !document.hidden) boot(); }, 60000);
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+sqlalchemy==2.0.35
+pydantic==2.9.2
+anthropic>=0.40.0,<1.0.0
+openpyxl==3.1.5
+python-multipart==0.0.12
+# Prod deployment: Postgres via psycopg v3 (binary wheel — no compiler needed).
+# Install is a no-op on SQLite-only environments.
+psycopg[binary]==3.2.3
