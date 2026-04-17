@@ -2073,11 +2073,38 @@ async function renderSettingsView(root) {
         <button class="btn btn-primary" data-save-key="${key}" style="margin-bottom:0;">Save</button>
       </div>`;
   };
+  // Load the caller's personal Apify token separately (we never return the
+  // full token in /api/auth/me for safety — users must explicitly fetch it).
+  let myApify = { set: false };
+  try { myApify = await api("/api/auth/apify_key"); } catch (e) { /* not critical */ }
+
   root.innerHTML = `
+    <div class="card" style="border-color: var(--tmc-gold);">
+      <h2 style="margin-top:0;">Your personal Apify token</h2>
+      <p style="font-size:12px;color:var(--mute);">
+        Enrichment for candidates <em>you</em> own will use this token — usage is billed to your
+        Apify account. Leave empty to fall back to the workspace token (if your admin has set one).
+        Get a token at <a href="https://console.apify.com/account/integrations" target="_blank">console.apify.com</a>.
+        <strong>Default actor:</strong> <code>harvestapi/linkedin-profile-scraper</code>.
+      </p>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <input class="input" id="myApifyKey" type="password" placeholder="apify_api_..." value=""
+          style="flex:1;min-width:280px;font-family:monospace;">
+        <span class="chip ${myApify.set ? 'chip-ok' : 'chip-outline'}">${myApify.set ? 'SET' : 'NOT SET'}</span>
+        <button class="btn btn-primary" id="saveMyApifyBtn">Save</button>
+        ${myApify.set ? '<button class="btn btn-ghost" id="clearMyApifyBtn" style="color:#a33;">Clear</button>' : ''}
+      </div>
+    </div>
+
+    ${ME && ME.is_admin ? `
     <div class="card">
-      <h2>Apify — LinkedIn profile enrichment</h2>
-      <p style="font-size:12px;color:var(--mute);">Proxycurl has shut down; we now use an Apify actor. <strong>Default:</strong> <code>harvestapi/linkedin-profile-scraper</code> — works on the free Apify plan via API ($4 / 1k profiles, pay-as-you-go). Get a token at <a href="https://console.apify.com/account/integrations" target="_blank">console.apify.com</a>. If you set a different actor ID that disallows API runs on the free plan (e.g. <code>2SyF0bVxmgGr8IVCZ</code>), enrichment will fail with a clear error — just swap the Actor ID back to <code>harvestapi/linkedin-profile-scraper</code>.</p>
-      ${fieldRow("apify_api_key", "Apify API token", "apify_api_...")}
+      <h2>Workspace Apify fallback <span class="chip chip-gold" style="margin-left:6px;">admin</span></h2>
+      <p style="font-size:12px;color:var(--mute);">
+        Fallback token used when a user hasn't set their own. You can also set a per-user token on the Admin tab.
+        If you set a different actor ID that disallows API runs on the free plan (e.g. <code>2SyF0bVxmgGr8IVCZ</code>),
+        enrichment will fail with a clear error — just swap back to <code>harvestapi/linkedin-profile-scraper</code>.
+      </p>
+      ${fieldRow("apify_api_key", "Workspace Apify API token", "apify_api_...")}
       ${fieldRow("apify_actor_id", "Actor ID (override)", "harvestapi/linkedin-profile-scraper", "text")}
       <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         <input class="input" id="apifyTestUrl" placeholder="https://www.linkedin.com/in/williamhgates/" style="max-width:380px;">
@@ -2085,6 +2112,7 @@ async function renderSettingsView(root) {
       </div>
       <div id="apifyTestOut" style="margin-top:8px;font-size:12px;"></div>
     </div>
+    ` : ''}
     <div class="card" style="border-color: var(--tmc-gold);">
       <h2 style="margin-top:0;">🔑 Chrome Extension — your personal key</h2>
       <p style="font-size:13px;">
@@ -2149,6 +2177,27 @@ async function renderSettingsView(root) {
     if (!val) return toast("Empty value", true);
     try { await api("/api/settings", { method: "POST", body: JSON.stringify({ key, value: val }) }); toast("Saved"); await boot(); } catch (e) { toast("Failed: " + e.message, true); }
   }));
+
+  // Personal Apify token: per-user, overrides the workspace key for your own candidates.
+  const saveApifyBtn = document.getElementById("saveMyApifyBtn");
+  if (saveApifyBtn) saveApifyBtn.addEventListener("click", async () => {
+    const val = document.getElementById("myApifyKey").value.trim();
+    if (!val) return toast("Paste your apify_api_… token first", true);
+    try {
+      await api("/api/auth/apify_key", { method: "POST", body: JSON.stringify({ apify_api_key: val }) });
+      toast("Personal Apify key saved");
+      await renderSettingsView(root);
+    } catch (e) { toast("Failed: " + e.message, true); }
+  });
+  const clearApifyBtn = document.getElementById("clearMyApifyBtn");
+  if (clearApifyBtn) clearApifyBtn.addEventListener("click", async () => {
+    if (!confirm("Clear your personal Apify key? You'll fall back to the workspace key (if set).")) return;
+    try {
+      await api("/api/auth/apify_key", { method: "POST", body: JSON.stringify({ apify_api_key: "" }) });
+      toast("Personal Apify key cleared");
+      await renderSettingsView(root);
+    } catch (e) { toast("Failed: " + e.message, true); }
+  });
   const add = document.getElementById("addUserBtn");
   if (add) add.addEventListener("click", () => openAddUserModal());
 
@@ -2296,6 +2345,7 @@ async function renderAdminView(root) {
                   ? `<button class="btn btn-navy btn-sm" data-act="viewas" data-id="${u.id}" title="Open Inbox / People / Stats filtered to this user">View inbox</button>`
                   : ''}
                 <button class="btn btn-ghost btn-sm" data-act="showkey" data-id="${u.id}" title="Reveal this user's Chrome-extension key">Show key</button>
+                <button class="btn btn-ghost btn-sm" data-act="apifykey" data-id="${u.id}" title="Set this user's personal Apify token (falls back to the workspace one when empty)">Apify ${u.apify_key_set ? '✓' : '—'}</button>
                 ${u.is_active
                   ? `<button class="btn btn-ghost btn-sm" data-act="deactivate" data-id="${u.id}">Suspend</button>`
                   : `<button class="btn btn-gold btn-sm" data-act="activate" data-id="${u.id}">Approve</button>`}
@@ -2303,6 +2353,9 @@ async function renderAdminView(root) {
                   ? `<button class="btn btn-ghost btn-sm" data-act="demote" data-id="${u.id}">Demote</button>`
                   : `<button class="btn btn-ghost btn-sm" data-act="promote" data-id="${u.id}">Make admin</button>`}
                 <button class="btn btn-ghost btn-sm" data-act="reset" data-id="${u.id}">Reset pw</button>
+                ${u.id !== (ME && ME.id)
+                  ? `<button class="btn btn-ghost btn-sm" data-act="delete" data-id="${u.id}" style="color:#a33;" title="Permanently delete this user">Delete</button>`
+                  : ''}
               </td>
             </tr>
           `).join("")}
@@ -2330,6 +2383,66 @@ async function renderAdminView(root) {
       if (!u) return toast("User not found", true);
       setViewAs(Number(id), u);
       switchView("dashboard");
+      return;
+    }
+
+    // Set / clear a user's personal Apify token.
+    if (act === "apifykey") {
+      const u = users.find(x => x.id === Number(id));
+      const cur = u && u.apify_key_set ? "(a key is already set — leave empty and Save to keep it)" : "(no key set yet)";
+      showModal(`
+        <h2 style="margin-top:0;">Apify key for ${esc(u ? (u.display_name || u.username) : id)}</h2>
+        <p style="font-size:12px;color:var(--mute);">
+          Paste <strong>${esc(u ? u.username : '')}'s</strong> personal Apify API token here. Enrichment for their
+          candidates will then be billed to their Apify account. Clear the field and save to remove their personal
+          key (they'll fall back to the workspace-wide key, if any). ${esc(cur)}
+        </p>
+        <input class="input" id="apifyKeyInput" placeholder="apify_api_..." style="font-family:monospace;font-size:12px;" value="">
+        <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end;">
+          <button class="btn btn-ghost btn-sm" id="apifyClearBtn" style="color:#a33;">Clear key</button>
+          <button class="btn btn-ghost btn-sm" id="apifyCancelBtn">Cancel</button>
+          <button class="btn btn-navy btn-sm" id="apifySaveBtn">Save</button>
+        </div>
+      `);
+      document.getElementById("apifyCancelBtn").addEventListener("click", hideModal);
+      document.getElementById("apifyClearBtn").addEventListener("click", async () => {
+        if (!confirm("Remove this user's personal Apify key?")) return;
+        try {
+          await api(`/api/admin/users/${id}`, { method: "PATCH", body: JSON.stringify({ apify_api_key: "" }) });
+          toast("Apify key cleared");
+          hideModal(); renderAdminView(root);
+        } catch (e) { toast("Failed: " + e.message, true); }
+      });
+      document.getElementById("apifySaveBtn").addEventListener("click", async () => {
+        const val = document.getElementById("apifyKeyInput").value.trim();
+        if (!val) return toast("Paste a key or use Clear key", true);
+        try {
+          await api(`/api/admin/users/${id}`, { method: "PATCH", body: JSON.stringify({ apify_api_key: val }) });
+          toast("Apify key saved for this user");
+          hideModal(); renderAdminView(root);
+        } catch (e) { toast("Failed: " + e.message, true); }
+      });
+      return;
+    }
+
+    // Hard-delete a user. The backend enforces: not self, not last admin.
+    if (act === "delete") {
+      const u = users.find(x => x.id === Number(id));
+      const name = u ? (u.display_name || u.username) : `user ${id}`;
+      const msg = `Permanently delete ${name}?\n\n` +
+                  `Their candidates and conversations will be KEPT (but un-owned — only admins will see them). ` +
+                  `Type the username to confirm.`;
+      const typed = prompt(msg + "\n\nUsername:");
+      if (!typed) return;
+      if (u && typed.trim() !== u.username) {
+        toast("Username didn't match — nothing deleted.", true);
+        return;
+      }
+      try {
+        await api(`/api/admin/users/${id}`, { method: "DELETE" });
+        toast(name + " deleted");
+        renderAdminView(root);
+      } catch (e) { toast("Failed: " + e.message, true); }
       return;
     }
 

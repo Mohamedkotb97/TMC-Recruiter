@@ -236,6 +236,12 @@ class User(Base):
     # Per-user API key — pasted into the Chrome extension so each recruiter
     # saves conversations under their OWN account on a shared backend.
     api_key = Column(String(100), unique=True, index=True, nullable=True)
+    # Per-user Apify API token. When set, profile enrichment for candidates
+    # this user owns goes through THEIR Apify account (so usage is billed to
+    # them). When empty, we fall back to the workspace-wide key stored in the
+    # Setting table. Admins can set/clear this from the Admin UI; users can
+    # also set their own from Settings.
+    apify_api_key = Column(String(500), nullable=True)
 
 
 class Session(Base):
@@ -348,6 +354,8 @@ def init_db():
         "ALTER TABLE candidates ADD COLUMN owner_user_id INTEGER",
         # Per-user extension API key
         "ALTER TABLE users ADD COLUMN api_key VARCHAR(100)",
+        # Per-user Apify token (falls back to workspace setting when NULL/empty)
+        "ALTER TABLE users ADD COLUMN apify_api_key VARCHAR(500)",
     ]
     indexes = [
         "CREATE INDEX IF NOT EXISTS ix_conversations_thread_url ON conversations(thread_url)",

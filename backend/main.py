@@ -132,6 +132,23 @@ def set_setting(db: Session, key: str, value: str):
     db.commit()
 
 
+def _resolve_apify_key(db: Session, user_id: Optional[int]) -> str:
+    """Pick the right Apify token for a given user.
+
+    Priority:
+      1. The user's personal `apify_api_key` (User.apify_api_key) — billed to them.
+      2. The workspace-wide `apify_api_key` setting — billed to the owner.
+      3. Legacy `proxycurl_api_key` setting for back-compat.
+    Returns "" when none are configured; callers should then skip enrichment.
+    """
+    if user_id:
+        u = db.query(User).filter(User.id == user_id).first()
+        if u and (u.apify_api_key or "").strip():
+            return u.apify_api_key.strip()
+    return (get_setting(db, "apify_api_key", "")
+            or get_setting(db, "proxycurl_api_key", ""))
+
+
 # ========== Auth ==========
 #
 # Two ways to authenticate:
@@ -383,7 +400,11 @@ def _run_conv_analysis_job(conv_id: int, do_enrich: bool = True) -> None:
 
         # --- optional Apify enrichment ---
         if do_enrich and (not cand.about or not cand.skills_json):
-            apify_key = get_setting(db, "apify_api_key", "") or get_setting(db, "proxycurl_api_key", "")
+            # Prefer the conversation owner's personal Apify key (so usage is
+            # billed to the recruiter who captured the thread); fall back to
+            # the candidate's owner, then to the workspace key.
+            apify_key = (_resolve_apify_key(db, conv.owner_user_id)
+                         or _resolve_apify_key(db, cand.owner_user_id))
             profile_url = (cand.profile_url or "").strip()
             if apify_key and profile_url and profile_url.startswith("http"):
                 actor_id = get_setting(db, "apify_actor_id", "") or ai_service.APIFY_DEFAULT_ACTOR
@@ -980,6 +1001,7 @@ def analyze_conversation(
     enrich: bool = True,
     force: bool = False,
     db: Session = Depends(get_db),
+    user: Optional[User] = Depends(current_user),
     _: bool = Depends(require_api_key),
 ):
     """Generate conversation brief + person brief + pool & role suggestions for one conversation.
@@ -997,7 +1019,11 @@ def analyze_conversation(
     # Optional Apify enrichment — only if we don't already have rich profile data
     enriched_via_apify = False
     if enrich and (not cand.about or not cand.skills_json):
-        apify_key = get_setting(db, "apify_api_key", "") or get_setting(db, "proxycurl_api_key", "")
+        # Use the caller's personal key first, then the conversation owner's,
+        # then candidate's, then workspace fallback.
+        apify_key = (_resolve_apify_key(db, user.id if user else None)
+                     or _resolve_apify_key(db, conv.owner_user_id)
+                     or _resolve_apify_key(db, cand.owner_user_id))
         profile_url = (cand.profile_url or "").strip()
         if apify_key and profile_url and profile_url.startswith("http"):
             actor_id = get_setting(db, "apify_actor_id", "") or ai_service.APIFY_DEFAULT_ACTOR
@@ -1875,10 +1901,14 @@ def enrich_candidate(
     Users can override APIFY_ACTOR_ID in Settings; we send the union of common
     input shapes so multiple actors can be used.
     """
-    key = (get_setting(db, "apify_api_key", "")
-           or get_setting(db, "proxycurl_api_key", ""))
+    # Prefer the caller's personal Apify key; fall back to the workspace key.
+    key = _resolve_apify_key(db, user.id if user else None)
     if not key:
-        raise HTTPException(400, "Apify API key is not set. Open Settings to add it.")
+        raise HTTPException(
+            400,
+            "Apify API key is not set. Open Settings to add your personal key, "
+            "or ask your admin to set a workspace-wide one.",
+        )
     actor_id = get_setting(db, "apify_actor_id", "") or ai_service.APIFY_DEFAULT_ACTOR
 
     cand = None
@@ -2944,6 +2974,39 @@ def rotate_my_api_key(
     return {"api_key": user.api_key}
 
 
+class ApifyKeyIn(BaseModel):
+    apify_api_key: str = ""
+
+
+@app.get("/api/auth/apify_key")
+def get_my_apify_key(
+    user: Optional[User] = Depends(current_user),
+):
+    """Returns the caller's personal Apify key (so the Settings UI can show
+    whether one is configured + let the user edit it)."""
+    if not user:
+        raise HTTPException(401, "Log in first")
+    return {
+        "apify_api_key": (user.apify_api_key or ""),
+        "set": bool((user.apify_api_key or "").strip()),
+    }
+
+
+@app.post("/api/auth/apify_key")
+def set_my_apify_key(
+    payload: ApifyKeyIn,
+    user: Optional[User] = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    """Save (or clear) the caller's personal Apify token. Pass an empty string
+    to clear it — the user then falls back to the workspace-wide key (if any)."""
+    if not user:
+        raise HTTPException(401, "Log in first")
+    user.apify_api_key = (payload.apify_api_key or "").strip() or None
+    db.commit()
+    return {"set": bool(user.apify_api_key)}
+
+
 # ---------- Admin dashboard: list / toggle / promote users ----------
 
 @app.get("/api/admin/users")
@@ -2961,6 +3024,7 @@ def admin_list_users(
         d = _user_dict(u)
         d["candidate_count"] = int(cand_count)
         d["conversation_count"] = int(conv_count)
+        d["apify_key_set"] = bool((u.apify_api_key or "").strip())
         out.append(d)
     return {"users": out, "total": len(out)}
 
@@ -2971,6 +3035,9 @@ class AdminUserPatchIn(BaseModel):
     role: Optional[str] = None
     display_name: Optional[str] = None
     reset_password: Optional[str] = None
+    # Pass an empty string to clear the user's personal Apify key, a real token
+    # to set it, or None / omit to leave it unchanged.
+    apify_api_key: Optional[str] = None
 
 
 @app.patch("/api/admin/users/{user_id}")
@@ -2996,8 +3063,48 @@ def admin_update_user(
         u.display_name = payload.display_name
     if payload.reset_password:
         u.password_hash = ai_service.hash_password(payload.reset_password)
+    if payload.apify_api_key is not None:
+        u.apify_api_key = (payload.apify_api_key or "").strip() or None
     db.commit()
     return _user_dict(u)
+
+
+@app.delete("/api/admin/users/{user_id}")
+def admin_delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    _admin: Optional[User] = Depends(require_admin),
+    __: bool = Depends(require_api_key),
+):
+    """Admin-only. Hard-delete a user. Safeguards:
+    - Cannot delete yourself (use the Admin UI of another admin account).
+    - Cannot delete the last remaining admin (would lock the workspace).
+    Data owned by the deleted user (candidates, conversations) is preserved
+    but its owner_user_id/owner_id is nulled so admins can still see it."""
+    u = db.query(User).filter(User.id == user_id).first()
+    if not u:
+        raise HTTPException(404, "User not found")
+    if _admin and getattr(_admin, "id", None) == u.id:
+        raise HTTPException(400, "You cannot delete yourself — ask another admin or demote first.")
+    if u.is_admin:
+        admin_count = db.query(func.count(User.id)).filter(User.is_admin == True).scalar() or 0
+        if admin_count <= 1:
+            raise HTTPException(400, "Refusing to delete the last admin. Promote someone else first.")
+    # Orphan-safe: keep the candidates/conversations but cut their owner links.
+    db.query(Candidate).filter(Candidate.owner_user_id == u.id).update(
+        {Candidate.owner_user_id: None}, synchronize_session=False,
+    )
+    db.query(Candidate).filter(Candidate.owner_id == u.id).update(
+        {Candidate.owner_id: None}, synchronize_session=False,
+    )
+    db.query(Conversation).filter(Conversation.owner_user_id == u.id).update(
+        {Conversation.owner_user_id: None}, synchronize_session=False,
+    )
+    # Drop active sessions so a deleted user can't linger.
+    db.query(SessionRow).filter(SessionRow.user_id == u.id).delete(synchronize_session=False)
+    db.delete(u)
+    db.commit()
+    return {"ok": True, "deleted_user_id": user_id}
 
 
 @app.get("/api/admin/users/{user_id}/api_key")
