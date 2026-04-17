@@ -354,15 +354,34 @@ function waitForThreadIdChange(prev, timeout = URL_CHANGE_WAIT_MS) {
   });
 }
 
+// Find the scrollable sidebar container. LinkedIn keeps renaming the class,
+// so we anchor on a thread-link anchor (stable URL pattern) and walk UP to
+// the first ancestor that is actually scrollable — that is the virtualised
+// sidebar list, whatever its current CSS class happens to be.
+function getSidebarScroller() {
+  const known = document.querySelector(
+    ".msg-conversations-container__conversations-list, " +
+    "ul.msg-conversations-container__conversations-list, " +
+    "[data-view-name='messaging-conversation-list']"
+  );
+  if (known) return known;
+
+  const anchor = document.querySelector("a[href*='/messaging/thread/']");
+  if (!anchor) return null;
+  let el = anchor.parentElement;
+  while (el && el !== document.body) {
+    const style = window.getComputedStyle(el);
+    const scrollableY = /(auto|scroll)/.test(style.overflowY);
+    if (scrollableY && el.scrollHeight > el.clientHeight + 4) return el;
+    el = el.parentElement;
+  }
+  return null;
+}
+
 // Scroll the conversations sidebar to force lazy-load of older items.
 async function loadAllSidebarItems(maxRounds = LIST_SCROLL_ROUNDS) {
-  const getList = () =>
-    document.querySelector(
-      ".msg-conversations-container__conversations-list, " +
-      "ul.msg-conversations-container__conversations-list"
-    );
-  const list = getList();
-  if (!list) return [];
+  const list = getSidebarScroller();
+  if (!list) return collectSidebarItems();
 
   let prev = -1;
   for (let i = 0; i < maxRounds; i++) {
@@ -376,31 +395,56 @@ async function loadAllSidebarItems(maxRounds = LIST_SCROLL_ROUNDS) {
 }
 
 function collectSidebarItems() {
-  // Collect candidate nodes from ALL known LinkedIn selectors (they change
-  // it frequently), then normalise each hit to its nearest <li>. Using a
-  // Set of <li> references dedupes reliably — the old version stored BOTH
-  // the <li> AND its inner .msg-conversation-card__content--selectable div,
-  // inflating the count and causing "Save last 5" to actually process fewer
-  // threads than requested.
-  const selectors = [
+  // Two strategies, combined and deduped:
+  //   1) Known CSS class hits (fast path when LinkedIn hasn't reshuffled).
+  //   2) Anchor-based discovery: every conversation row contains at least one
+  //      <a href="*/messaging/thread/*">. This survives class-name churn.
+  // Both paths normalise to the nearest clickable container (<li> when
+  // present, otherwise the closest role=listitem / data-view-name wrapper,
+  // otherwise the anchor's parent). We use a Set of container refs to dedupe
+  // so the same row isn't counted twice when multiple selectors match it.
+  const set = new Set();
+
+  const classSelectors = [
     "li.msg-conversation-listitem",
     "li.msg-conversations-container__convo-item",
     ".msg-conversation-card__content--selectable",
     ".msg-conversation-listitem",
     "[data-view-name='messaging-conversation-list-item']",
+    "[data-view-name='messaging-conversation-list-item-wrapper']",
   ];
-  const set = new Set();
-  for (const sel of selectors) {
+  for (const sel of classSelectors) {
     document.querySelectorAll(sel).forEach((el) => {
-      const li = el.closest("li") || el;
-      // Only accept nodes that actually contain a thread link — LinkedIn
-      // sometimes renders header rows / separators with the same class.
-      if (li.querySelector("a[href*='/messaging/thread/'], a[href*='/thread/']")) {
-        set.add(li);
+      const row = rowContainerFor(el);
+      if (row && row.querySelector("a[href*='/messaging/thread/'], a[href*='/thread/']")) {
+        set.add(row);
       }
     });
   }
+
+  document
+    .querySelectorAll("a[href*='/messaging/thread/']")
+    .forEach((a) => {
+      const row = rowContainerFor(a);
+      if (row) set.add(row);
+    });
+
   return Array.from(set);
+}
+
+// Given any node inside a conversation row, return the element we should
+// treat as the row — in priority order:
+//   1) nearest <li>
+//   2) nearest [role=listitem] / [data-view-name*='conversation']
+//   3) the element itself
+function rowContainerFor(el) {
+  if (!el) return null;
+  return (
+    el.closest("li") ||
+    el.closest("[role='listitem']") ||
+    el.closest("[data-view-name*='conversation']") ||
+    el
+  );
 }
 
 // Extract a sidebar item's target thread URL (preferred click target).
@@ -564,10 +608,7 @@ async function handleSaveLastN(btn, n) {
   statusClear();
   statusLog(`Save last ${n}: scrolling sidebar to top…`, "info");
 
-  const list = document.querySelector(
-    ".msg-conversations-container__conversations-list, " +
-    "ul.msg-conversations-container__conversations-list"
-  );
+  const list = getSidebarScroller();
   if (list) { list.scrollTop = 0; await sleep(400); }
 
   // LinkedIn virtualises the sidebar — the top items may be mid-render when
@@ -589,7 +630,16 @@ async function handleSaveLastN(btn, n) {
   }
   statusLog(`Found ${items.length} conversation item(s) in the sidebar`, items.length ? "ok" : "warn");
   if (items.length === 0) {
-    statusLog(`Are you on https://www.linkedin.com/messaging/ with conversations visible on the left?`, "warn");
+    // Diagnose: how many thread anchors does the page even have? This tells
+    // us whether LinkedIn changed classes (anchors > 0) or we're on the wrong
+    // page / the sidebar is still loading (anchors == 0).
+    const anchors = document.querySelectorAll("a[href*='/messaging/thread/']").length;
+    statusLog(`Diagnostic: ${anchors} thread link(s) on page.`, "warn");
+    if (anchors === 0) {
+      statusLog(`Open https://www.linkedin.com/messaging/ and wait for the left list to populate, then click Save last ${n} again.`, "warn");
+    } else {
+      statusLog(`Thread links exist but none matched the sidebar row heuristic — LinkedIn DOM may have changed. Please report this.`, "warn");
+    }
     showToast("No conversations visible in the sidebar", "error");
     return restore();
   }
