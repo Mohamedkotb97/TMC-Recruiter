@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TMC · Recruiter Workspace — Habib Touil</title>
+<title>TMC · Recruiter Workspace</title>
 <link rel="icon" href="/tmc_logo.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -290,7 +290,7 @@
       <div class="topbar-right">
         <button class="search-trigger" id="paletteBtn" title="Global search">🔎 Search <kbd>⌘K</kbd></button>
         <button class="btn btn-gold btn-sm" id="quickAddBtn">+ Add candidate</button>
-        <span class="owner-chip" id="userChip">★ Habib Touil</span>
+        <span class="owner-chip" id="userChip" style="display:none;"></span>
         <button class="btn btn-ghost btn-sm" id="logoutBtn" title="Log out" style="display:none;">⤴</button>
       </div>
     </header>
@@ -317,7 +317,7 @@
       </div>
       <div class="modal-actions"><button class="btn btn-primary" id="loginBtn" style="width:100%;">Sign in</button></div>
       <p style="font-size:11px;color:var(--mute);text-align:center;margin-top:10px;">
-        First time on this server? Default admin is <code>habib</code> / <code>tmc-admin</code> — change the password from Settings.
+        First time on this server? Log in with the username + password from <code>DEFAULT_ADMIN_USERNAME</code> / <code>DEFAULT_ADMIN_PASSWORD</code> env vars — then change the password from Admin.
       </p>
     </div>
 
@@ -577,7 +577,10 @@ async function boot() {
     const me = await api("/api/auth/me").catch(() => ({ user: null, all_users: [] }));
     ME = me.user; STATE.users = me.all_users || [];
     if (ME) {
-      document.getElementById("userChip").textContent = "★ " + (ME.display_name || ME.username);
+      const _chip = document.getElementById("userChip");
+      _chip.textContent = "★ " + (ME.display_name || ME.username);
+      _chip.style.display = "inline-flex";
+      _chip.title = `Signed in as @${ME.username}`;
       document.getElementById("logoutBtn").style.display = "inline-flex";
       const navAdmin = document.getElementById("navAdmin");
       if (navAdmin) navAdmin.style.display = (ME.is_admin ? "flex" : "none");
@@ -869,7 +872,7 @@ function renderOnboarding() {
   };
   return `
     <div class="card" style="background: linear-gradient(135deg, var(--tmc-navy), var(--tmc-navy-3)); color: var(--tmc-white); border: none;">
-      <h2 style="color: var(--tmc-gold);">Welcome, ${esc(ME?.display_name || 'Habib')} — let's set up your workspace</h2>
+      <h2 style="color: var(--tmc-gold);">Welcome, ${esc(ME?.display_name || ME?.username || 'recruiter')} — let's set up your workspace</h2>
       <p style="color: var(--tmc-paper-3);">A few quick steps to unlock the full flow. You can skip any of them.</p>
     </div>
     <div class="onboard-step ${checks.extension ? 'done' : ''}">

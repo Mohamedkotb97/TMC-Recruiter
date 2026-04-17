@@ -369,17 +369,24 @@ def init_db():
         "CREATE INDEX IF NOT EXISTS ix_messages_conversation_id ON messages(conversation_id)",
         "CREATE INDEX IF NOT EXISTS ix_users_api_key ON users(api_key)",
     ]
-    with engine.begin() as conn:
-        for sql in migrations:
-            try:
+    # NOTE: each statement runs in its OWN transaction. On Postgres, once ANY
+    # statement in a transaction raises (e.g. "column already exists" from a
+    # previously-applied ADD COLUMN), the WHOLE transaction enters an aborted
+    # state and every following statement fails with InFailedSqlTransaction.
+    # Wrapping each in its own begin() block means each ALTER either applies
+    # cleanly or is no-op'd without poisoning the run.
+    for sql in migrations:
+        try:
+            with engine.begin() as conn:
                 conn.execute(text(sql))
-            except Exception:
-                pass
-        for sql in indexes:
-            try:
+        except Exception:
+            pass
+    for sql in indexes:
+        try:
+            with engine.begin() as conn:
                 conn.execute(text(sql))
-            except Exception:
-                pass
+        except Exception:
+            pass
 
 
 def get_db():
