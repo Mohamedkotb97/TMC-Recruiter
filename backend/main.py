@@ -240,27 +240,71 @@ def require_admin(
 
 
 def _ensure_default_user(db: Session):
-    """Seed a default admin user on first boot so the dashboard can be used immediately."""
-    if db.query(User).count() == 0:
-        default_pw = os.environ.get("DEFAULT_ADMIN_PASSWORD", "tmc-admin")
+    """Seed a default admin user so the dashboard can be used immediately.
+
+    Behaviour:
+    - The admin username is read from env DEFAULT_ADMIN_USERNAME (default "kotb").
+    - The password is read from env DEFAULT_ADMIN_PASSWORD (default "tmc-admin").
+    - On EVERY boot, if a user with that username doesn't exist, we create it
+      as admin. This lets you rotate the default admin by simply changing env
+      vars and redeploying, even if the DB already has other users.
+    - If the user already exists but was marked inactive / non-admin, we fix
+      both flags — the intent of the env var is "this is the bootstrap admin".
+    - The password hash is only (re)set when the user is first CREATED. We do
+      NOT overwrite the password of an existing admin on every boot — otherwise
+      rotating the env var in Render would clobber whatever the admin chose in
+      the UI. To force a reset, delete the user first or use the admin UI.
+    """
+    default_username = os.environ.get("DEFAULT_ADMIN_USERNAME", "kotb").strip() or "kotb"
+    default_pw       = os.environ.get("DEFAULT_ADMIN_PASSWORD", "tmc-admin")
+    default_display  = os.environ.get("DEFAULT_ADMIN_DISPLAY_NAME", default_username.capitalize())
+
+    existing = db.query(User).filter(User.username == default_username).first()
+    if existing is None:
         db.add(User(
-            username="habib",
+            username=default_username,
             password_hash=ai_service.hash_password(default_pw),
-            display_name="Habib Touil",
+            display_name=default_display,
             role="admin",
             is_active=True,
             is_admin=True,
             api_key=_new_user_api_key(),
         ))
         db.commit()
-        print(f"[info] seeded default user 'habib' with password '{default_pw}' — CHANGE IT.")
+        print(f"[info] seeded admin '{default_username}' — log in with the DEFAULT_ADMIN_PASSWORD env var and change the password.")
     else:
-        # Make sure at least one user has is_admin=True (back-compat for existing DBs)
-        if db.query(User).filter(User.is_admin == True).count() == 0:
-            first = db.query(User).filter(User.role == "admin").first() or db.query(User).first()
-            if first:
-                first.is_admin = True
-                db.commit()
+        # Make sure the bootstrap admin is always active + admin. Don't touch password.
+        changed = False
+        if not existing.is_active:
+            existing.is_active = True; changed = True
+        if not existing.is_admin:
+            existing.is_admin = True; changed = True
+        if existing.role != "admin":
+            existing.role = "admin"; changed = True
+        if not existing.api_key:
+            existing.api_key = _new_user_api_key(); changed = True
+        if changed:
+            db.commit()
+
+    # Back-compat: any legacy DB with no admin at all — promote the oldest user.
+    if db.query(User).filter(User.is_admin == True).count() == 0:
+        first = db.query(User).filter(User.role == "admin").first() or db.query(User).first()
+        if first:
+            first.is_admin = True
+            db.commit()
+
+    # First-run defaults for public sign-ups. On a brand-new DB we turn
+    # self-registration ON (so recruiters can create their own accounts from
+    # the login screen) but leave auto-approve OFF (so admin still has to
+    # activate each new account). Admins can change both toggles in the UI
+    # at any time — we only seed the initial value.
+    if db.query(Setting).filter(Setting.key == "allow_self_register").first() is None:
+        initial = os.environ.get("ENABLE_SELF_REGISTER", "1")
+        db.add(Setting(key="allow_self_register", value=("1" if initial != "0" else "0")))
+    if db.query(Setting).filter(Setting.key == "auto_approve_signups").first() is None:
+        initial = os.environ.get("AUTO_APPROVE_SIGNUPS", "0")
+        db.add(Setting(key="auto_approve_signups", value=("1" if initial == "1" else "0")))
+    db.commit()
     # Backfill API keys for any user that doesn't have one yet.
     for u in db.query(User).filter((User.api_key.is_(None)) | (User.api_key == "")).all():
         u.api_key = _new_user_api_key()
