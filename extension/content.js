@@ -63,46 +63,129 @@ function queryFirst(parent, selectors) {
   return null;
 }
 
-// Parse a single msg-s-event-listitem (or similar) into {sender, body, timestamp}.
+// Parse a single message node (any variant) into {sender, body, timestamp}.
 function extractMessageFromNode(node, defaultSender) {
   const senderEl = queryFirst(node, [
     ".msg-s-message-group__name",
     ".msg-s-message-group__profile-link",
     ".msg-s-message-group__meta .msg-s-message-group__name",
+    "[data-view-name='messaging-message-sender']",
+    "[data-view-name*='message-sender']",
+    ".message-sender-name",
   ]);
   const sender = senderEl ? senderEl.innerText.trim() : (defaultSender || "");
 
   const timeEl = queryFirst(node, [
     "time[datetime]",
+    "time",
     ".msg-s-message-group__timestamp",
     ".msg-s-message-list__time-heading",
+    "[data-view-name*='message-timestamp']",
   ]);
   const timestamp = timeEl
     ? (timeEl.getAttribute("datetime") || timeEl.innerText.trim())
     : "";
 
-  // Pick the INNERMOST body element so we don't accidentally include the sender
-  // label / timestamp text inside "body".
+  // Pick the INNERMOST body element so we don't accidentally include sender /
+  // timestamp text inside "body". Tries known classes first, then common
+  // data-view-name wrappers, then falls back to a heuristic textual child.
   const bodyEl = queryFirst(node, [
     ".msg-s-event-listitem__body",
     ".msg-s-event-with-indicator__body",
     ".msg-s-event__content",
+    "[data-view-name='messaging-message-body']",
+    "[data-view-name*='message-body']",
+    ".message-body",
   ]);
-  const body = bodyEl ? bodyEl.innerText.trim() : "";
+  let body = bodyEl ? bodyEl.innerText.trim() : "";
+
+  // Structural fallback: if no known-class body found, take the node's own
+  // text minus the sender text. Skip if the node clearly isn't a message
+  // (too short, or contains only a timestamp).
+  if (!body) {
+    const txt = (node.innerText || "").trim();
+    if (txt.length > 2) {
+      const senderTxt = sender || "";
+      const timeTxt = timestamp || "";
+      let remainder = txt;
+      if (senderTxt) remainder = remainder.replace(senderTxt, "").trim();
+      if (timeTxt)   remainder = remainder.replace(timeTxt, "").trim();
+      if (remainder.length >= 2) body = remainder;
+    }
+  }
+
   return { sender, body, timestamp };
 }
 
-function extractConversation() {
-  const threadContainer = document.querySelector(
-    ".msg-s-message-list, .msg-s-message-list-container, [aria-label*='conversation']"
+// Find the element that contains the currently-open thread's message list.
+// Tries multiple known classes, then data-view-name, then a structural
+// fallback ("the biggest scrollable element in the right/center pane that
+// contains multiple small text blocks").
+function findThreadContainer() {
+  const known = document.querySelector(
+    ".msg-s-message-list, " +
+    ".msg-s-message-list-container, " +
+    "[data-view-name='messaging-thread-message-list'], " +
+    "[data-view-name='messaging-thread'], " +
+    "[aria-label*='conversation'], " +
+    "[aria-label*='Conversation']"
   );
-  if (!threadContainer) return null;
+  if (known) return known;
+
+  // Structural fallback: scrollable element on the right half of the viewport
+  // containing many <li> children.
+  const candidates = Array.from(document.querySelectorAll("ul, div, section"))
+    .filter((el) => {
+      const r = el.getBoundingClientRect();
+      if (r.width < 300 || r.height < 300) return false;
+      if (r.right < window.innerWidth * 0.4) return false; // must be on the right
+      const s = window.getComputedStyle(el);
+      if (!/(auto|scroll)/.test(s.overflowY)) return false;
+      if (el.querySelectorAll("li").length < 2) return false;
+      return true;
+    })
+    .sort((a, b) => b.scrollHeight - a.scrollHeight);
+  return candidates[0] || null;
+}
+
+// Given a thread container, return the list of per-message nodes. Multiple
+// strategies; first one that returns non-empty wins.
+function findMessageNodes(container) {
+  const selectors = [
+    ".msg-s-event-listitem",
+    ".msg-s-message-list__event",
+    "[data-view-name='messaging-thread-message']",
+    "[data-view-name*='message-item']",
+    "[data-urn*='messagingMessage']",
+    "[data-event-urn]",
+    "li[role='listitem']",
+  ];
+  for (const sel of selectors) {
+    const nodes = Array.from(container.querySelectorAll(sel));
+    if (nodes.length > 0) return { nodes, selector: sel };
+  }
+  // Last resort: every direct li child that has non-trivial text.
+  const direct = Array.from(container.querySelectorAll("li")).filter((li) => {
+    const t = (li.innerText || "").trim();
+    return t.length >= 3;
+  });
+  return { nodes: direct, selector: direct.length ? "li (structural fallback)" : "none" };
+}
+
+function extractConversation() {
+  const threadContainer = findThreadContainer();
+  if (!threadContainer) {
+    console.warn("[CRM] extractConversation: no thread container found on page");
+    return null;
+  }
 
   // --- candidate identity (from conversation header) ---
   const nameEl = queryFirst(document, [
     ".msg-entity-lockup__entity-title",
     "h2.msg-title",
     ".msg-thread__link-to-profile",
+    "[data-view-name='messaging-thread-title']",
+    "[data-view-name*='thread-title']",
   ]);
   const candidateName = nameEl ? nameEl.innerText.trim().split("\n")[0] : "Unknown";
 
@@ -110,6 +193,7 @@ function extractConversation() {
     "a.msg-thread__link-to-profile",
     ".msg-entity-lockup a[href*='/in/']",
     "a[href*='/in/'][data-test-app-aware-link]",
+    "a[href*='/in/']",
   ]);
   const profileUrl = profileLink ? profileLink.href.split("?")[0] : "";
 
@@ -117,6 +201,7 @@ function extractConversation() {
     ".msg-entity-lockup__entity-info",
     ".msg-entity-lockup__occupation",
     ".msg-thread__subtitle",
+    "[data-view-name*='thread-subtitle']",
   ]);
   const headline = subtitleEl ? subtitleEl.innerText.trim().replace(/\s+/g, " ") : "";
   let currentTitle = "";
@@ -128,21 +213,18 @@ function extractConversation() {
   }
 
   // --- messages ---
-  // Prefer the specific selector `.msg-s-event-listitem` because it's 1-item-per-message.
-  // `.msg-s-message-list__event` is sometimes a wrapper that contains 2+ event-listitems.
-  // If we used the union we'd double-count.
-  let messageNodes = Array.from(
-    threadContainer.querySelectorAll(".msg-s-event-listitem")
-  );
+  const { nodes: messageNodes, selector: matchedSelector } =
+    findMessageNodes(threadContainer);
+
   if (messageNodes.length === 0) {
-    // Fall back to `.msg-s-message-list__event`, but only direct children.
-    messageNodes = Array.from(
-      threadContainer.querySelectorAll(".msg-s-message-list__event")
+    console.warn(
+      "[CRM] extractConversation: 0 message nodes matched in container",
+      threadContainer
     );
   }
 
   // Sender stickiness: LinkedIn shows the sender name ONCE at the top of a
-  // group, then subsequent messages in that group have no name. We carry it
+  // group, then subsequent messages in that group have no name. Carry it
   // forward until we see a new one.
   let lastSender = "";
   const seenBodies = new Set(); // dedupe identical consecutive bodies
@@ -151,7 +233,6 @@ function extractConversation() {
     const m = extractMessageFromNode(node, lastSender);
     if (!m.body) continue;
     if (m.sender) lastSender = m.sender;
-    // Prevent exact duplicate back-to-back (LinkedIn sometimes renders twice).
     const key = (lastSender || m.sender) + "::" + m.body;
     if (seenBodies.has(key)) continue;
     seenBodies.add(key);
@@ -164,7 +245,7 @@ function extractConversation() {
 
   const threadUrl = window.location.href.split("?")[0].split("#")[0];
 
-  return {
+  const result = {
     candidate_name: candidateName,
     profile_url: profileUrl,
     thread_url: threadUrl,
@@ -176,6 +257,13 @@ function extractConversation() {
     current_company: currentCompany,
     location: "",
   };
+  // Attach a non-enumerable diagnostic hint so the walker can log what
+  // strategy matched (useful when every item extracts 0 messages).
+  Object.defineProperty(result, "_matchedSelector", {
+    value: matchedSelector,
+    enumerable: false,
+  });
+  return result;
 }
 
 // Scroll the thread pane UP to load older messages. Break only when the
@@ -183,14 +271,13 @@ function extractConversation() {
 // round isn't enough — LinkedIn sometimes pauses a round before streaming
 // the next batch of older messages).
 async function loadFullThreadHistory(maxRounds = HISTORY_SCROLL_ROUNDS) {
-  const scroller = document.querySelector(
-    ".msg-s-message-list, .msg-s-message-list-container"
-  );
+  const scroller = findThreadContainer();
   if (!scroller) return;
   let prev = -1;
   let stableRounds = 0;
+  const countItems = () => findMessageNodes(scroller).nodes.length;
   for (let i = 0; i < maxRounds; i++) {
-    const items = scroller.querySelectorAll(".msg-s-event-listitem").length;
+    const items = countItems();
     if (items === prev) {
       stableRounds += 1;
       if (stableRounds >= 2 && i > 2) break;
@@ -734,7 +821,18 @@ async function walkAndUpload(items, btn, label) {
         payload = extractConversation();
       }
       if (!payload || payload.messages.length === 0) {
-        statusLog(`item ${i+1} (${threadId.slice(0,10)}…): extracted 0 messages — skipped`, "warn");
+        // Rich diagnostic so we can tell whether extraction failed because
+        // (a) the thread container wasn't found, (b) we found it but 0
+        // message nodes matched any strategy, or (c) they matched but all
+        // had empty bodies.
+        const container   = findThreadContainer();
+        const nodeInfo    = container ? findMessageNodes(container) : { nodes: [], selector: "no container" };
+        const rawLiCount  = container ? container.querySelectorAll("li").length : 0;
+        const matched     = payload && payload._matchedSelector;
+        statusLog(
+          `item ${i+1} (${threadId.slice(0,10)}…): extracted 0 messages — container: ${!!container} · message strategy: ${matched || "n/a"} · raw li count: ${rawLiCount} · strategy hits: ${nodeInfo.nodes.length}`,
+          "warn"
+        );
         skipped++;
         continue;
       }
