@@ -375,18 +375,36 @@ def init_db():
     # state and every following statement fails with InFailedSqlTransaction.
     # Wrapping each in its own begin() block means each ALTER either applies
     # cleanly or is no-op'd without poisoning the run.
+    #
+    # On Postgres we rewrite "ADD COLUMN X" -> "ADD COLUMN IF NOT EXISTS X" so
+    # the statement is idempotent at the DB level (no reliance on exception
+    # catching). On SQLite we leave it as-is and rely on the try/except fallback
+    # because older SQLite versions don't support IF NOT EXISTS on ADD COLUMN.
+    is_postgres = engine.dialect.name.startswith("postgres")
+    import logging as _logging
+    _log = _logging.getLogger("recruiter.migrate")
+
+    def _run(sql: str):
+        if is_postgres and " ADD COLUMN " in sql and " IF NOT EXISTS " not in sql:
+            sql = sql.replace(" ADD COLUMN ", " ADD COLUMN IF NOT EXISTS ", 1)
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(sql))
+        except Exception as exc:
+            # Expected: "duplicate column", "already exists". Anything else is
+            # unexpected and we want it in the logs so a failed migration is
+            # not silently masked.
+            msg = str(exc).lower()
+            benign = ("duplicate column" in msg
+                      or "already exists" in msg
+                      or "no such" in msg)
+            if not benign:
+                _log.warning("Migration failed (non-fatal): %s -> %s", sql, exc)
+
     for sql in migrations:
-        try:
-            with engine.begin() as conn:
-                conn.execute(text(sql))
-        except Exception:
-            pass
+        _run(sql)
     for sql in indexes:
-        try:
-            with engine.begin() as conn:
-                conn.execute(text(sql))
-        except Exception:
-            pass
+        _run(sql)
 
 
 def get_db():
