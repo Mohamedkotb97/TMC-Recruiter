@@ -514,6 +514,12 @@ async def lifespan(app: FastAPI):
         _ensure_default_user(_db)
     finally:
         _db.close()
+    if not _BG_ANALYSIS_ENABLED:
+        print(
+            "[warn] Background AI analysis is OFF (DISABLE_BG_ANALYSIS). "
+            "Conversations still save; open a candidate in the dashboard and "
+            "click \"Brief this\" / \"Analyze\" to generate summaries and person briefs."
+        )
     yield
 
 
@@ -709,6 +715,51 @@ def upsert_candidate(db: Session, profile_url: str, full_name: str, **extra) -> 
     return cand
 
 
+def _find_conversation_for_user(
+    db: Session, thread_url: str, user_id: int
+) -> Optional[Conversation]:
+    """Resolve the conversation row for this LinkedIn thread for THIS user.
+
+    Historically we deduped only on ``thread_url``, which caused user B's
+    extension uploads to update user A's row — B never got ``owner_user_id``
+    and saw an empty inbox. We now scope by owner:
+
+    1. Prefer ``(thread_url, owner_user_id == user_id)``.
+    2. Else a legacy row with ``owner_user_id IS NULL`` (claim on write).
+
+    We never return another recruiter's conversation.
+    """
+    url = (thread_url or "").strip()
+    if not url:
+        return None
+    q = db.query(Conversation).filter(Conversation.thread_url == url)
+    row = q.filter(Conversation.owner_user_id == user_id).first()
+    if row:
+        return row
+    return q.filter(Conversation.owner_user_id.is_(None)).first()
+
+
+def _conversations_visible_to_user(
+    c: Candidate,
+    user: Optional[User],
+    scope_user_id: Optional[int] = None,
+) -> list:
+    """Conversations on a candidate visible in the current API context.
+
+    - If ``scope_user_id`` is set (non-admin inbox, or admin ``?as_user_id=``),
+      return that user's threads plus legacy NULL-owner rows.
+    - Else if the caller is an admin, return all threads.
+    - Else return this user's threads plus legacy NULL-owner rows.
+    """
+    convs = list(c.conversations or [])
+    uid = scope_user_id
+    if uid is None and user and not getattr(user, "is_admin", False):
+        uid = user.id
+    if uid is not None:
+        return [x for x in convs if x.owner_user_id is None or x.owner_user_id == uid]
+    return convs
+
+
 # ========== Endpoints: capture ==========
 
 @app.post("/api/candidates")
@@ -762,11 +813,7 @@ def save_conversation(
 
     thread_url = (payload.thread_url or "").strip()
 
-    existing = None
-    if thread_url:
-        existing = db.query(Conversation).filter(
-            Conversation.thread_url == thread_url
-        ).first()
+    existing = _find_conversation_for_user(db, thread_url, user.id) if thread_url else None
 
     # Hash the new message set so we can detect "nothing changed" fast.
     new_msg_keys = [(m.sender or "", m.body or "") for m in payload.messages]
@@ -902,11 +949,9 @@ def bulk_save_conversations(
                 cand.owner_user_id = user.id
 
             thread_url = (c.thread_url or "").strip()
-            existing = None
-            if thread_url:
-                existing = db.query(Conversation).filter(
-                    Conversation.thread_url == thread_url
-                ).first()
+            existing = (
+                _find_conversation_for_user(db, thread_url, user.id) if thread_url else None
+            )
 
             new_keys = [(m.sender or "", m.body or "") for m in c.messages]
 
@@ -1308,12 +1353,13 @@ def list_candidates(
     rows = query.all()
     out = []
     for c in rows:
-        # Find the latest message across all of this candidate's conversations
+        visible_convs = _conversations_visible_to_user(c, user, scope_user_id)
+        # Find the latest message across visible conversations only
         last_msg = None
         last_ts = None
         last_conv_sentiment = ""
         last_conv_id = None
-        for conv in c.conversations:
+        for conv in visible_convs:
             for m in conv.messages:
                 ts = _parse_msg_ts(m.timestamp_raw) or m.created_at or conv.captured_at
                 if ts is None:
@@ -1349,7 +1395,7 @@ def list_candidates(
             "email": c.email or "",
             "skills": _jload(c.skills_json, [])[:6],
             "years_experience": c.years_experience,
-            "conversation_count": len(c.conversations),
+            "conversation_count": len(visible_convs),
             "pool_ids": [p.id for p in c.pools],
             "owner_id": c.owner_id,
             "source": c.source or "manual",
@@ -1568,13 +1614,17 @@ def get_candidate(
             }
             for t in tasks
         ],
-        "conversations": _build_conversations_payload(db, c),
+        "conversations": _build_conversations_payload(db, c, user),
     }
 
 
-def _build_conversations_payload(db: Session, c: Candidate) -> list:
-    """Order conversations by latest-message DESC, and messages inside each DESC (latest first)."""
-    convs = list(c.conversations)
+def _build_conversations_payload(db: Session, c: Candidate, user: Optional[User] = None) -> list:
+    """Order conversations by latest-message DESC, and messages inside each DESC (latest first).
+
+    Non-admins only receive threads they own (plus legacy NULL-owner rows), so
+    shared LinkedIn profiles do not leak another recruiter's DMs.
+    """
+    convs = _conversations_visible_to_user(c, user, None)
 
     def _conv_last_ts(conv):
         best = None
