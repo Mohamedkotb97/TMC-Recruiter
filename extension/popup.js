@@ -6,7 +6,7 @@ const openDashboardBtn = document.getElementById("openDashboardBtn");
 const versionBadge = document.getElementById("versionBadge");
 const statusEl = document.getElementById("status");
 
-const DEFAULT_URL = "http://localhost:8000";
+const DEFAULT_URL = "https://tmc-recruiter.onrender.com";
 
 try {
   const mf = chrome.runtime.getManifest();

@@ -9,7 +9,7 @@
 // The walker clicks each sidebar item, waits for the URL to actually change,
 // scrolls the thread pane to the top to lazy-load full history, then extracts.
 
-const DEFAULT_BACKEND_URL = "http://localhost:8000";
+const DEFAULT_BACKEND_URL = "https://tmc-recruiter.onrender.com";
 const BATCH_SIZE = 8;             // conversations per upload POST
 const OPEN_SETTLE_MS = 600;       // settle after the thread is loaded (600 ms — LinkedIn re-renders a few times)
 const THREAD_WAIT_MS = 15000;     // max wait for a thread's messages to render
